@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. เข้าไปจัดการ input ทุกตัวที่อยู่ในกล่อง custom-address-box */
+.custom-address-box input{
+  display: block !important;
+  width: 100% !important;
+  height: 42px !important;            /* ความสูงมาตรฐาน */
+  padding: 0.5rem 0.75rem !important; /* ระยะห่างข้อความ */
+  
+  background-color: #fff !important;
+  border: 1px solid #9ca3af!important; /* สีขอบ gray-300 */
+  border-radius: 0.25rem !important;   /* ความมน rounded-md */
+  box-sizing: border-box !important;    /* ป้องกันขอบเบิ้ล */
+  outline: none !important;             /* ลบเส้นขอบ default ของ browser */
+  font-size: 1rem !important;
+  color: #1f2937 !important;
+  margin: 0 !important;
+  box-shadow: none !important;          /* ลบเงาแปลกๆ ที่ติดมา */
+}
+
+/* 2. จัดการ Effect ตอนเอาเมาส์ไปคลิก (Focus) */
+.custom-address-box input:focus {
+  border-color: #2563eb !important;     /* สีฟ้า blue-600 */
+  box-shadow: 0 0 0 1px #2563eb !important; /* เงาสีฟ้า */
+}
+
+/* 3. ซ่อน Wrapper หรือ Div แปลกปลอมที่ Library อาจจะแถมมา */
+.custom-address-box > div > div {
+    display: block !important;
+    width: 100% !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.custom-address-box input::placeholder {
+  color: #9ca3af !important; /* gray-400 */
+  opacity: 1 !important;     /* แก้บั๊ก Firefox จาง */
+  -webkit-text-fill-color: #9ca3af !important;
+}
+
+.custom-address-box input::-webkit-input-placeholder {
+  color: #9ca3af !important;
+}
+
+.custom-address-box input::-moz-placeholder {
+  color: #9ca3af !important;
+}
+
+.profile-edit-address div {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* 2. คืนค่าให้ Input (พระเอกของเรา) มีขอบและสีตามปกติ */
+.profile-edit-address input {
+    display: block !important;
+    width: 100% !important;
+    height: 42px !important;
+    padding: 0 12px !important;
+    
+    background-color: #f9fafb !important; /* สีเทาอ่อน */
+    border: 1px solid #e5e7eb !important; /* เส้นขอบสีเทา กลับมาแล้ว! */
+    border-radius: 0.5rem !important;
+    
+    box-sizing: border-box !important;
+    outline: none !important;
+    font-size: 1rem !important;
+    color: #1f2937 !important;
+    margin: 0 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* 3. Effect ตอนกด (Focus) */
+.profile-edit-address input:focus {
+    background-color: #ffffff !important; 
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+}
+
+/* 4. จัดการ Dropdown (ต้องเขียนทับ เพราะโดนข้อ 1 ลบไป) */
+.profile-edit-address .react-autosuggest__suggestions-container {
+    background-color: white !important;
+    border: 1px solid #e5e7eb !important; /* คืนขอบให้ Dropdown */
+    border-radius: 0.5rem !important;
+    margin-top: 4px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    
+    position: absolute;
+    width: 100%;
+    z-index: 9999 !important;
+    max-height: 200px;
+    overflow-y: auto;
+    left: 0 !important;
+}
+
+.profile-edit-address .react-autosuggest__suggestion {
+    padding: 10px 12px !important;
+    cursor: pointer !important;
+}
+
+.profile-edit-address .react-autosuggest__suggestion--highlighted {
+    background-color: #eff6ff !important;
+    color: #2563eb !important;
+}
+
+
+.check-out-address div {
+    border: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* 2. คืนค่าให้ Input (พระเอกของเรา) มีขอบและสีตามปกติ */
+.check-out-address input {
+    display: block !important;
+    width: 100% !important;
+    
+    /* --- แก้ไขตรงนี้ --- */
+    /* เดิม: height: 42px !important; */
+    height: auto !important; /* ปล่อยให้สูงตาม Padding */
+    
+    /* เดิม: padding: 0 12px !important; */
+    padding: 0.75rem 1rem !important; /* เทียบเท่า px-4 py-3 ของ Tailwind */
+    /* ------------------ */
+    
+    background-color: #f9fafb !important; 
+    border: 1px solid #e5e7eb !important; 
+    border-radius: 0.5rem !important; /* เทียบเท่า rounded-lg */
+    
+    box-sizing: border-box !important;
+    outline: none !important;
+    font-size: 1rem !important;
+    color: #1f2937 !important;
+    margin: 0 !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* 3. Effect ตอนกด (Focus) */
+.check-out-address input:focus {
+    background-color: #ffffff !important; 
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+}
+
+/* 4. จัดการ Dropdown (ต้องเขียนทับ เพราะโดนข้อ 1 ลบไป) */
+.check-out-address .react-autosuggest__suggestions-container {
+    background-color: white !important;
+    border: 1px solid #e5e7eb !important; /* คืนขอบให้ Dropdown */
+    border-radius: 0.5rem !important;
+    margin-top: 4px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    
+    position: absolute;
+    width: 100%;
+    z-index: 9999 !important;
+    max-height: 200px;
+    overflow-y: auto;
+    left: 0 !important;
+}
+
+.check-out-address .react-autosuggest__suggestion {
+    padding: 10px 12px !important;
+    cursor: pointer !important;
+}
+
+.check-out-address .react-autosuggest__suggestion--highlighted {
+    background-color: #eff6ff !important;
+    color: #2563eb !important;
+}
