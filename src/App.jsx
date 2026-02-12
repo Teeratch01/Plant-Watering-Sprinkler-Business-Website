@@ -21,8 +21,10 @@ import OrderSuccessPage from './Pages/OrderSuccessPage';
 import OrderSearchPage from './Pages/OrderSearchPage';
 import OrderHistoryPage from './Pages/OrderHistoryPage';
 import ContactUsPage from './Pages/ContactUsPage';
+import AdminRoute from './components/AdminRoute';
+import AdminDashboard from './Pages/Admin/AdminDashboard';
 
-  
+
 function HomePage() {
   // const [count, setCount] = useState(0)
   const services = [
@@ -57,11 +59,11 @@ function HomePage() {
         <Navbar />
 
         <div className="w-full h-[700px]">
-          <img 
-            src={homeimage} 
+          <img
+            src={homeimage}
             className='w-full h-full object-cover'
-            alt="homeimage" 
-            />
+            alt="homeimage"
+          />
         </div>
 
         <section className="py-16 bg-white">
@@ -80,9 +82,9 @@ function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {services.map((service) => (
                 <div key={service.id} className="bg-gray-100 rounded-lg overflow-hidden shadow-lg">
-                  <img 
-                    src={service.image} 
-                    alt={service.title} 
+                  <img
+                    src={service.image}
+                    alt={service.title}
                     className={`w-full h-48 object-cover ${service.position} group-hover:scale-110 transition-transform duration-500`}
                   />
                   <div className="p-6">
@@ -108,32 +110,38 @@ function App() {
   return (
     <CartProvider>
 
-      <ToastContainer 
-         position="top-right"
-         autoClose={3000}
-         hideProgressBar={false}
-         newestOnTop={false}
-         closeOnClick
-         rtl={false}
-         pauseOnFocusLoss
-         draggable
-         pauseOnHover
-         theme="colored" // เลือกธีมได้: light, dark, colored
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored" // เลือกธีมได้: light, dark, colored
       />
 
-    <Routes>
-      <Route path='/' element={<HomePage />} />
-      <Route path='/login' element={<Login />} />
-      <Route path='/register' element={<Register />} />
-      <Route path="/products" element={<ProductsPage />} />
-      <Route path="/products/:id" element={<ProductsDetailPage />} />
-      <Route path="/cart" element={<CartPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/order-success" element={<OrderSuccessPage />} />
-      <Route path="/order-status" element={<OrderSearchPage />} />
-      <Route path="/order-history" element={<OrderHistoryPage />} />
-      <Route path="/contact" element={<ContactUsPage />} />
-    </Routes>
+      <Routes>
+        <Route path='/' element={<HomePage />} />
+        <Route path='/login' element={<Login />} />
+        <Route path='/register' element={<Register />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/products/:id" element={<ProductsDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/order-success" element={<OrderSuccessPage />} />
+        <Route path="/order-status" element={<OrderSearchPage />} />
+        <Route path="/order-history" element={<OrderHistoryPage />} />
+        <Route path="/contact" element={<ContactUsPage />} />
+
+        <Route path="/admin/dashboard" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+      </Routes>
     </CartProvider>
   );
 }
