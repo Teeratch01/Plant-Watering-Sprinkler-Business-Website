@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import SearchImg from '../assets/Product/Search_Backgroud.jpg';
 import { useNavigate } from 'react-router-dom';
 import AddToCartModal from '../components/AddToCartModal';
+import CategoryKnowledgeBanner from '../components/CategoryKnowledgeBanner';
 
 function ProductsPage() {
 
@@ -321,6 +322,10 @@ function ProductsPage() {
                 <span className="text-gray-400 text-lg font-normal ml-2">({displayedProducts.length})</span>
               </h2>
             </div>
+
+            {!hasSearched && selectedCategory !== "All" && (
+                <CategoryKnowledgeBanner category={selectedCategory} />
+            )}
 
             {loading ? (
               <div className="text-center py-20">

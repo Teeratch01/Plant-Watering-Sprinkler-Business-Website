@@ -23,6 +23,8 @@ import OrderHistoryPage from './Pages/OrderHistoryPage';
 import ContactUsPage from './Pages/ContactUsPage';
 import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
+import ClientChatPage from './Pages/ClientChatPage';
+import AdminChatPage from './Pages/Admin/AdminChatPage';
 
 
 function HomePage() {
@@ -135,10 +137,17 @@ function App() {
         <Route path="/order-status" element={<OrderSearchPage />} />
         <Route path="/order-history" element={<OrderHistoryPage />} />
         <Route path="/contact" element={<ContactUsPage />} />
+        <Route path="/chat" element={<ClientChatPage />} />
 
         <Route path="/admin/dashboard" element={
           <AdminRoute>
             <AdminDashboard />
+          </AdminRoute>
+        } />
+
+        <Route path="/admin/chat" element={
+          <AdminRoute>
+            <AdminChatPage />
           </AdminRoute>
         } />
       </Routes>

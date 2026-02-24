@@ -92,7 +92,7 @@ const Navbar = () => {
             <Link to="/">
 
             <div className="text-4xl font-light tracking-widest text-black">
-                NTK
+                PWSB
             </div>
 
             </Link>

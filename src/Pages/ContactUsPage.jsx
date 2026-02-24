@@ -3,6 +3,8 @@ import Navbar from '../components/Navbar';
 import { MapPin, Phone, Mail, Clock, Send, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { siFacebook, siInstagram } from 'simple-icons';
+import { auth } from '../FirebaseConfig';
+import { useNavigate } from 'react-router-dom';
 
 
 function ContactUsPage() {
@@ -38,6 +40,18 @@ function ContactUsPage() {
     // const inputStyle = "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white";
 
     // const {facebook} = require('facebook');
+
+
+    const navigate = useNavigate();
+
+    const handleChatClick = () => {
+        if (auth.currentUser) {
+            navigate('/chat');
+        } else {
+            toast.info("กรุณาเข้าสู่ระบบเพื่อใช้งานแชท");
+            navigate('/login');
+        }
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
@@ -148,7 +162,7 @@ function ContactUsPage() {
                         </iframe>
 
                         <button
-                            onClick={() => toast.info("ฟีเจอร์แชทกำลังจะมาเร็วๆ นี้!")} // หรือใส่ navigate('/chat')
+                            onClick={handleChatClick} // หรือใส่ navigate('/chat')
                             className="bg-black hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2 w-fit h-fit"
                         >
                             <MessageCircle size={24} />
