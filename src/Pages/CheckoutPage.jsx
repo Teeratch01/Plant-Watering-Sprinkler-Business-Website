@@ -16,6 +16,7 @@ import {
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from '../FirebaseConfig';
 import QRCode_payment from '../assets/Checkout/QRCode_payment.jpg';
+import emailjs from '@emailjs/browser';
 
 const InputThaiAddress = CreateInput();
 
@@ -264,6 +265,31 @@ function CheckoutPage() {
             });
 
             // --- Success Handling (ทำงานเมื่อ Transaction ผ่านฉลุย) ---
+
+
+            // Email Sent Section
+            // const itemsText = cartItems.map(item => 
+            //     `- ${item.ProductName} (จำนวน: ${item.quantity} ชิ้น) : ${(item.Price * item.quantity).toLocaleString()} บาท`
+            // ).join('\n');
+
+            // const fullAddress = `${formData.address} ต.${address.district} อ.${address.amphoe} จ.${address.province} ${address.zipcode}`;
+            // const templateParams = {
+            //     customer_name: `${formData.name} ${formData.surname}`,
+            //     customer_email: formData.email, // ต้องสร้างตัวแปรรับอีเมลใน EmailJS เป็น To Email: {{customer_email}}
+            //     order_number: generatedOrderNumber,
+            //     total_price: finalPrice.toLocaleString(),
+            //     payment_method: paymentMethod === 'qr' ? 'โอนเงินผ่าน QR Code' : 'บัตรเครดิต/เดบิต',
+            //     order_details: itemsText,
+            //     shipping_address: fullAddress
+            // };
+
+            // emailjs.send(
+            //     'service_ggjvrgp', 
+            //     'template_ba6dokd', // ใช้ Template ID ของ Order Confirmation
+            //     templateParams, 
+            //     'l0FcJmRFJUKMjF1sG'
+            // ).catch((err) => console.error("EmailJS Error:", err));
+
             toast.success("สั่งซื้อสินค้าสำเร็จ!");
             setCartItems([]);
             localStorage.removeItem('shopping-cart');

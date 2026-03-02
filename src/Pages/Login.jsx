@@ -34,7 +34,7 @@ function Login() {
       if (docSnap.exists()) {
         const userData = docSnap.data();
 
-        if (userData.role === 'admin') {
+        if (userData.role === 'admin' || userData.role === 'adminManager') {
           toast.success("Welcome Admin!");
           navigate('/admin/dashboard');
         }

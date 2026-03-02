@@ -4,10 +4,12 @@ import {
     CreditCard, QrCode, Building,
     MapPin, User, Phone, Mail, XCircle, AlertCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const OrderDetailCard = ({ order, payment }) => {
 
     const isCancelled = order?.OrderStatus === 'Cancelled';
+    const navigate = useNavigate();
 
     const getStatusLevel = (status) => {
         switch (status) {
@@ -220,7 +222,9 @@ const OrderDetailCard = ({ order, payment }) => {
 
                     {isCancelled && <div className="text-right text-red-500 font-bold text-sm mt-1">ยกเลิกแล้ว</div>}
 
-                    <button className="w-full mt-6 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3 rounded-lg transition text-sm shadow-sm">
+                    <button 
+                    onClick={() => navigate('/chat',{ state: { askAboutOrder: order.OrderNumber } })}
+                    className="w-full mt-6 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3 rounded-lg transition text-sm shadow-sm">
                         แจ้งปัญหา / ติดต่อเรา
                     </button>
                 </div>

@@ -17,7 +17,7 @@ const AdminRoute = ({ children }) => {
                 const docRef = doc(db, "users", currentUser.uid);
                 const docSnap = await getDoc(docRef);
                 
-                if (docSnap.exists() && docSnap.data().role === 'admin') {
+                if (docSnap.exists() && (docSnap.data().role === 'admin' || docSnap.data().role === 'adminManager')) {
                     setIsAdmin(true);
                 } else {
                     setIsAdmin(false);

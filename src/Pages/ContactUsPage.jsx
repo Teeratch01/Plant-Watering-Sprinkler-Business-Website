@@ -1,48 +1,52 @@
-import React, { useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { MapPin, Phone, Mail, Clock, Send, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { siFacebook, siInstagram } from 'simple-icons';
-import { auth } from '../FirebaseConfig';
+import { auth ,db} from '../FirebaseConfig';
 import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 
 function ContactUsPage() {
 
-    // const [loading, setLoading] = useState(false);
-    // const [formData, setFormData] = useState({
-    //     name: '',
-    //     email: '',
-    //     subject: '',
-    //     message: ''
-    // });
-
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-
-    //     if (!formData.name || !formData.email || !formData.message) {
-    //         toast.warn("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
-    //         return;
-    //     }
-    //     setLoading(true);
-
-    //     setTimeout(() => {
-    //         toast.success("ส่งข้อความของคุณเรียบร้อยแล้ว! เราจะติดต่อกลับโดยเร็วที่สุด");
-    //         setFormData({ name: '', email: '', subject: '', message: '' }); // เคลียร์ฟอร์ม
-    //         setLoading(false);
-    //     }, 1500);
-    // }
-
-    // const handleInputChange = (e) => {
-    //     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // };
-
-    // const inputStyle = "w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white";
-
-    // const {facebook} = require('facebook');
-
-
     const navigate = useNavigate();
+
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        details: ''
+    });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                try {
+                    const userDocRef = doc(db, "users", currentUser.uid);
+                    const userSnap = await getDoc(userDocRef);
+                    if (userSnap.exists()) {
+                        const data = userSnap.data();
+                        const fullName = `${data.firstname || ''} ${data.surname || ''}`.trim();
+
+                        setFormData(prev => ({
+                            ...prev,
+                            name: fullName || currentUser.displayName || '',
+                            email: currentUser.email || '',
+                            phone: data.phone || ''
+                        }));
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data", error);
+                }
+            }
+        });
+        return () => unsubscribe();
+
+    }, []);
 
     const handleChatClick = () => {
         if (auth.currentUser) {
@@ -50,6 +54,47 @@ function ContactUsPage() {
         } else {
             toast.info("กรุณาเข้าสู่ระบบเพื่อใช้งานแชท");
             navigate('/login');
+        }
+    }
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        };
+    
+
+    const handleSubmitForm = async (e) => {
+        e.preventDefault();
+        if (!formData.name || !formData.email || !formData.details) {
+            toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await addDoc(collection(db, "support_requests"), {
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone || '',
+                details: formData.details,
+                userID: auth.currentUser ? auth.currentUser.uid : 'guest',
+                status: 'pending',
+                createdAt: serverTimestamp()
+            });
+            toast.success("ส่งคำขอเรียบร้อยแล้ว ทางเราจะติดต่อกลับโดยเร็วที่สุด");
+
+            setFormData(prev => ({
+                ...prev,
+                phone: '',
+                details: ''
+            }));
+        } catch (error) {
+            console.error("Error submitting support request", error);
+            toast.error("เกิดข้อผิดพลาดในการส่งคำขอ กรุณาลองใหม่อีกครั้ง");
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -109,7 +154,7 @@ function ContactUsPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-gray-800 mb-1">อีเมล</h3>
-                                    <p className="text-gray-600 text-sm hover:text-red-500 transition">support@ntk-shop.com</p>
+                                    <p className="text-gray-600 text-sm hover:text-red-500 transition">pwsbs1@outlook.com</p>
                                 </div>
                             </div>
 
@@ -161,13 +206,90 @@ function ContactUsPage() {
                             width="100%" height="500" style={{ border: 0, borderRadius: '1rem' }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade">
                         </iframe>
 
-                        <button
-                            onClick={handleChatClick} // หรือใส่ navigate('/chat')
-                            className="bg-black hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2 w-fit h-fit"
-                        >
-                            <MessageCircle size={24} />
-                            สอบถามผ่านแชท
-                        </button>
+                        <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in-up delay-300">
+                            <div className="mb-6 pb-4 border-b border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 mb-1">ติดต่อเรา</h2>
+                                    <p className="text-sm text-gray-500">กรุณากรอกข้อมูลไว้และทางเราจะติดต่อกลับหาคุณโดยเร็วที่สุด</p>
+                                </div>
+                                {/* ย้ายปุ่มแชทมาไว้ตรงนี้เพื่อให้ลูกค้ามีทางเลือก */}
+                                <button
+                                    onClick={handleChatClick}
+                                    className="hidden md:flex bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2 px-4 rounded-lg transition items-center gap-2 text-sm"
+                                >
+                                    <MessageCircle size={18} /> สอบถามผ่านแชททันที
+                                </button>
+                            </div>
+
+
+
+                            <form onSubmit={handleSubmitForm} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="text" name="name" required
+                                            value={formData.name} onChange={handleChange}
+                                            placeholder="ชื่อ - นามสกุล"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="email" name="email" required
+                                            value={formData.email} onChange={handleChange}
+                                            placeholder="example@mail.com"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                                    <input
+                                        type="text" name="phone"
+                                        value={formData.phone} onChange={handleChange}
+                                        placeholder="08X-XXX-XXXX"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียดเพิ่มเติม <span className="text-red-500">*</span></label>
+                                    <textarea
+                                        name="details" required rows="4"
+                                        value={formData.details} onChange={handleChange}
+                                        placeholder="พิมพ์ข้อความ แจ้งปัญหา หรือข้อเสนอแนะที่นี่..."
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition resize-none"
+                                    ></textarea>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="bg-gray-800 hover:bg-black text-white font-bold py-3 px-8 rounded-lg shadow-md transition transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                                >
+                                    {isSubmitting ? (
+                                        <span className="animate-pulse">กำลังส่ง...</span>
+                                    ) : (
+                                        <>
+                                            <Send size={18} /> ยืนยันการส่ง
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+
+
+
+                            <button
+                                onClick={handleChatClick}
+                                className="md:hidden w-full mt-4 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                            >
+                                <MessageCircle size={18} /> สอบถามผ่านแชททันที
+                            </button>
+
+                        </div>
 
 
 
@@ -183,7 +305,6 @@ function ContactUsPage() {
                 </div>
 
 
-                {/* Map Section (Optional - Placeholder) */}
 
 
 

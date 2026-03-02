@@ -25,6 +25,8 @@ import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './Pages/Admin/AdminDashboard';
 import ClientChatPage from './Pages/ClientChatPage';
 import AdminChatPage from './Pages/Admin/AdminChatPage';
+import AdminSupportPage from './Pages/Admin/AdminSupportPage';
+import AdminOrdersPage from './Pages/Admin/AdminOrderPage';
 
 
 function HomePage() {
@@ -150,6 +152,19 @@ function App() {
             <AdminChatPage />
           </AdminRoute>
         } />
+
+        <Route path="/admin/support" element={
+          <AdminRoute>
+            <AdminSupportPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/admin/orders" element={
+          <AdminRoute>
+            <AdminOrdersPage />
+          </AdminRoute>
+        } />
+
       </Routes>
     </CartProvider>
   );

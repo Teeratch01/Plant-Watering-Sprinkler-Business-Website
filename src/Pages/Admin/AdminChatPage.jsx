@@ -3,6 +3,7 @@ import { db } from '../../FirebaseConfig';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { MessageSquare, Search } from 'lucide-react';
 import ChatWindow from '../../components/ChatWindow'; // Import Component กลาง
+import AdminNavbar from '../../components/Admin/AdminNavbar'; 
 
 function AdminChatPage() {
     const [chatRooms, setChatRooms] = useState([]);
@@ -18,14 +19,22 @@ function AdminChatPage() {
     }, []);
 
     return (
-        <div className="flex h-screen bg-gray-100 overflow-hidden">
+        
+        <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+
+            
+            <AdminNavbar />
+            <div className="flex flex-1 overflow-hidden">
             
             {/* --- Sidebar (เหมือนเดิม) --- */}
             <div className="w-1/3 md:w-1/4 bg-white border-r border-gray-200 flex flex-col">
+            
                 <div className="p-4 border-b bg-gray-50 font-bold flex gap-2">
+                    
                     <MessageSquare className="text-blue-600"/> แชทลูกค้า
                 </div>
                 <div className="flex-1 overflow-y-auto">
+                    
                     {chatRooms.map(room => (
                         <div 
                             key={room.id}
@@ -55,6 +64,7 @@ function AdminChatPage() {
                         เลือกรายการเพื่อเริ่มแชท
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );

@@ -4,9 +4,10 @@ import { Send, User, MessageCircle } from 'lucide-react';
 import { auth, db } from '../FirebaseConfig';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ChatWindow from '../components/ChatWindow';
+
 
 function ClientChatPage() {
 
@@ -16,6 +17,10 @@ function ClientChatPage() {
     // const messagesEndRef = useRef(null);
     const navigate = useNavigate();
     // const [loading, setLoading] = useState(true);
+    const location = useLocation();
+    const orderNumberFromSearch = location.state?.askAboutOrder;
+
+    const initialText = orderNumberFromSearch ? `สอบถามคำสั่งซื้อหมายเลข #${orderNumberFromSearch} \n รายละเอียดปัญหา: ` : '';
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -60,6 +65,7 @@ function ClientChatPage() {
                         chatRoomId={user.uid}
                         currentRole="customer"
                         customerName={fullName}
+                        initialMessage={initialText}
                     />
                 </div>
             </div>

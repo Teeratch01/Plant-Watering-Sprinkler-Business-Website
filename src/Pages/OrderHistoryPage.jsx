@@ -12,6 +12,8 @@ function OrderHistoryPage() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
 
+    const [activeTab, setActiveTab] = useState('Current'); // 'all', 'pending', 'completed', 'cancelled'
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if(!currentUser) {
@@ -73,6 +75,15 @@ function OrderHistoryPage() {
         }
     };
 
+    const currentOrders = orders.filter(o => !['Deliver Complete', 'Cancelled'].includes(o.OrderStatus));
+    const completedOrders = orders.filter(o => o.OrderStatus === 'Deliver Complete');
+    const cancelledOrders = orders.filter(o => o.OrderStatus === 'Cancelled');
+
+    let displayedOrders = [];
+    if (activeTab === 'Current') displayedOrders = currentOrders;
+    if (activeTab === 'Completed') displayedOrders = completedOrders;
+    if (activeTab === 'Cancelled') displayedOrders = cancelledOrders;
+
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading your orders...</div>;
     }
@@ -90,9 +101,37 @@ function OrderHistoryPage() {
                     <p className="text-gray-500">รายการคำสั่งซื้อทั้งหมดของคุณ</p>
                 </div>
 
+                <div className="flex border-b border-gray-200 mb-6 bg-white rounded-t-xl px-2 pt-2 shadow-sm">
+                    {/* Tab: Current */}
+                    <button 
+                        onClick={() => setActiveTab('Current')}
+                        className={`flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 transition duration-200 
+                            ${activeTab === 'Current' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                    >
+                        ที่ต้องจัดส่ง ({currentOrders.length})
+                    </button>
+                    {/* Tab: Completed */}
+                    <button 
+                        onClick={() => setActiveTab('Completed')}
+                        className={`flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 transition duration-200 
+                            ${activeTab === 'Completed' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                    >
+                        สำเร็จแล้ว ({completedOrders.length})
+                    </button>
+                    {/* Tab: Cancelled */}
+                    <button 
+                        onClick={() => setActiveTab('Cancelled')}
+                        className={`flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 transition duration-200 
+                            ${activeTab === 'Cancelled' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+                    >
+                        ยกเลิกแล้ว ({cancelledOrders.length})
+                    </button>
+                </div>
+
+
                 {/* Orders List */}
                 <div className="space-y-6">
-                    {orders.length === 0 ? (
+                    {displayedOrders.length === 0 ? (
                         <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
                             <Package size={64} className="mx-auto text-gray-300 mb-4" />
                             <p className="text-gray-500 text-lg">คุณยังไม่มีประวัติการสั่งซื้อ</p>
@@ -104,7 +143,7 @@ function OrderHistoryPage() {
                             </button>
                         </div>
                     ) : (
-                        orders.map((order) => (
+                        displayedOrders.map((order) => (
                             <div key={order.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition duration-200">
                                 <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                                     
