@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, LayoutDashboard, ClipboardList, MessageSquare, ChevronDown, Package ,HandHelping,ShieldUser,UsersRound} from 'lucide-react';
+import { LogOut, User, LayoutDashboard, ClipboardList, MessageSquare, ChevronDown, Package, HandHelping, ShieldUser, UsersRound } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../FirebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc,collection, query, where, onSnapshot } from 'firebase/firestore';
 
 
 const AdminNavbar = () => {
@@ -13,6 +13,8 @@ const AdminNavbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    const [pendingAdminCount, setPendingAdminCount] = useState(0);
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
@@ -20,7 +22,20 @@ const AdminNavbar = () => {
                     const docRef = doc(db, "users", currentUser.uid);
                     const docSnap = await getDoc(docRef);
                     if (docSnap.exists()) {
-                        setUserData(docSnap.data());
+                        const data = docSnap.data();
+                        setUserData(data);
+
+                        if (data.role === 'adminManager') {
+                            const q = query(collection(db, 'admin_requests'), where('status', '==', 'PENDING'));
+                            const unsubscribeRequests = onSnapshot(q, (snapshot) => {
+                                setPendingAdminCount(snapshot.docs.length);
+                            }
+                            );
+                            return () => unsubscribeRequests();
+                        } else {
+                            setPendingAdminCount(0);
+                        }
+
                     }
                 } catch (error) {
                     console.error("Error fetching admin data:", error);
@@ -42,36 +57,42 @@ const AdminNavbar = () => {
     };
 
     const adminMenu = [
-        { 
-            name: 'Home', 
-            path: '/admin/dashboard', 
-            icon: <LayoutDashboard size={18} /> 
+        {
+            name: 'Home',
+            path: '/admin/dashboard',
+            icon: <LayoutDashboard size={18} />
         },
-        { 
-            name: 'User MGMT', 
+        {
+            name: 'User MGMT',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
+            hasBadge: pendingAdminCount > 0,
             subItems: [
-                { name: 'Customer Management (ลูกค้า)', path: '/admin/customers', icon: <UsersRound size={16}/> },
-                { name: 'Admin Management (ผู้ดูแลระบบ)', path: '/admin/admins', icon: <ShieldUser size={16}/> }
+                { name: 'Customer Management (ลูกค้า)', path: '/admin/customers', icon: <UsersRound size={16} /> },
+                {
+                    name: 'Admin Management (ผู้ดูแลระบบ)',
+                    path: '/admin/admins',
+                    icon: <ShieldUser size={16} />,
+                    badgeCount: pendingAdminCount
+                }
             ]
         },
-        { 
-            name: 'Order & Product MGMT', 
+        {
+            name: 'Order & Product MGMT',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
             subItems: [
-                { name: 'Managing Orders (คำสั่งซื้อ)', path: '/admin/orders', icon: <ClipboardList size={16}/> },
-                { name: 'Managing Stock (คลังสินค้า)', path: '/admin/products', icon: <Package size={16}/> }
+                { name: 'Managing Orders (คำสั่งซื้อ)', path: '/admin/orders', icon: <ClipboardList size={16} /> },
+                { name: 'Managing Stock (คลังสินค้า)', path: '/admin/products', icon: <Package size={16} /> }
             ]
         },
-        { 
-            name: 'Helpdesk', 
+        {
+            name: 'Helpdesk',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
             subItems: [
-                { name: 'Support Center (ตอบคำร้อง)', path: '/admin/support', icon: <HandHelping size={16}/> },
-                { name: 'Chat (แชต)', path: '/admin/chat', icon: <MessageSquare size={16}/> }
+                { name: 'Support Center (ตอบคำร้อง)', path: '/admin/support', icon: <HandHelping size={16} /> },
+                { name: 'Chat (แชต)', path: '/admin/chat', icon: <MessageSquare size={16} /> }
             ]
         },
     ];
@@ -81,7 +102,7 @@ const AdminNavbar = () => {
 
     return (
         <nav className="flex items-center px-6 py-4 md:px-12 bg-gray-900 text-white sticky top-0 z-50 shadow-md rounded">
-            
+
             {/* Logo ฝั่งแอดมิน (ปรับฟอนต์ให้บางเหมือนในรูป) */}
             <Link to="/admin/dashboard" className="text-3xl font-light tracking-wide text-white flex items-center gap-3">
                 PWSB <span className="text-2xl font-extralight text-gray-400">|</span> <span className="text-xl font-normal">Admin Site</span>
@@ -91,8 +112,8 @@ const AdminNavbar = () => {
             <div className="hidden md:flex space-x-8 text-base ml-auto mr-10 font-medium">
                 {adminMenu.map((item) => {
                     // เช็คว่าหน้าปัจจุบันตรงกับเมนูนี้ หรือเมนูย่อยของมันหรือไม่
-                    const isActive = location.pathname.includes(item.path) || 
-                                     (item.subItems && item.subItems.some(sub => location.pathname.includes(sub.path)));
+                    const isActive = location.pathname.includes(item.path) ||
+                        (item.subItems && item.subItems.some(sub => location.pathname.includes(sub.path)));
 
                     return (
                         <div key={item.name} className="relative group">
@@ -103,6 +124,14 @@ const AdminNavbar = () => {
                                 >
                                     {item.name}
                                     {/* ถ้ามี subItems ให้แสดงลูกศรชี้ลง */}
+
+                                    {item.hasBadge && (
+                                        <span className="absolute -top-1 -right-3 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                        </span>
+                                    )}
+
                                     {item.subItems && <ChevronDown size={14} className="transition-transform group-hover:rotate-180" />}
                                 </div>
                             </Link>
@@ -112,13 +141,22 @@ const AdminNavbar = () => {
                                 <div className="absolute left-0 top-full pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
                                     <div className="bg-white text-gray-800 rounded-lg shadow-xl border border-gray-100 overflow-hidden">
                                         {item.subItems.map((sub, idx) => (
-                                            <Link 
-                                                key={idx} 
+                                            <Link
+                                                key={idx}
                                                 to={sub.path}
                                                 className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-50 last:border-0"
                                             >
-                                                {sub.icon}
-                                                {sub.name}
+                                                <div className="flex items-center gap-3">
+                                                    {sub.icon}
+                                                    {sub.name}
+                                                </div>
+
+                                                {/* 🌟 6. ตัวเลขบอกจำนวนใน Dropdown 🌟 */}
+                                                {sub.badgeCount > 0 && (
+                                                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-fade-in-up">
+                                                        {sub.badgeCount}
+                                                    </span>
+                                                )}
                                             </Link>
                                         ))}
                                     </div>

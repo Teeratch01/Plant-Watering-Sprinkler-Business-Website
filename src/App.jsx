@@ -27,6 +27,7 @@ import ClientChatPage from './Pages/ClientChatPage';
 import AdminChatPage from './Pages/Admin/AdminChatPage';
 import AdminSupportPage from './Pages/Admin/AdminSupportPage';
 import AdminOrdersPage from './Pages/Admin/AdminOrderPage';
+import AdminManagementPage from './Pages/Admin/AdminManagementPage';
 
 
 function HomePage() {
@@ -162,6 +163,12 @@ function App() {
         <Route path="/admin/orders" element={
           <AdminRoute>
             <AdminOrdersPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/admin/admins" element={
+          <AdminRoute>
+            <AdminManagementPage />
           </AdminRoute>
         } />
 
