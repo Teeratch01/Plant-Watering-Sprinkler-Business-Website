@@ -28,6 +28,7 @@ import AdminChatPage from './Pages/Admin/AdminChatPage';
 import AdminSupportPage from './Pages/Admin/AdminSupportPage';
 import AdminOrdersPage from './Pages/Admin/AdminOrderPage';
 import AdminManagementPage from './Pages/Admin/AdminManagementPage';
+import AdminProductPage from './Pages/Admin/AdminProductPage';
 
 
 function HomePage() {
@@ -169,6 +170,12 @@ function App() {
         <Route path="/admin/admins" element={
           <AdminRoute>
             <AdminManagementPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/admin/products" element={
+          <AdminRoute>
+            <AdminProductPage />
           </AdminRoute>
         } />
 

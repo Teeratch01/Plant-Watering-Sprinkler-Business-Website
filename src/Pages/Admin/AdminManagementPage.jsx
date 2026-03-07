@@ -68,7 +68,11 @@ function AdminManagementPage() {
         }
 
         const unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
-            const reqData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const reqData = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                // 🌟 กรองเอาเฉพาะ Request ที่ "ไม่ได้" ขึ้นต้นด้วยคำว่า 'PRODUCT_' 
+                .filter(req => req.type && !req.type.startsWith('PRODUCT_'));
+
             // เรียงจากใหม่ไปเก่า
             reqData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             setRequests(reqData);
@@ -202,6 +206,17 @@ function AdminManagementPage() {
     );
 
     const isManager = currentUser?.role === 'adminManager';
+
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        if (typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toLocaleString('th-TH', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        return '-';
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col">
@@ -352,6 +367,9 @@ function AdminManagementPage() {
                                                     {req.type === 'ADD_USER' ? 'ขอเพิ่มบัญชีใหม่' : 'ขอเปลี่ยนสถานะ'}
                                                 </span>
                                                 <span className="text-xs text-gray-400">ร้องขอโดย: {req.requestedByName}</span>
+
+                                                <span className="text-xs text-gray-300">•</span>
+                                                <span className="text-xs text-gray-500 font-medium">{formatTimestamp(req.createdAt)}</span>
                                             </div>
 
                                             {req.type === 'ADD_USER' ? (

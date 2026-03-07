@@ -1,0 +1,1026 @@
+import React, { useState, useEffect, useRef, use } from 'react';
+import { collection, query, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, getDoc, setDoc, where } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage } from '../../FirebaseConfig';
+import AdminNavbar from '../../components/Admin/AdminNavbar';
+import { Search, Plus, MoreHorizontal, Edit, DollarSign, Package, Activity, X, ImagePlus } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { onAuthStateChanged } from 'firebase/auth';
+
+
+function AdminProductPage() {
+
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [currentUser, setCurrentUser] = useState(null);
+
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    const dropdownRef = useRef(null);
+
+    const [requests, setRequests] = useState([]);
+    const [activeTab, setActiveTab] = useState('PRODUCTS');
+
+    const [modalState, setModalState] = useState({
+        type: null,
+        isOpen: false,
+        selectedProduct: null
+    });
+
+    const [formData, setFormData] = useState({
+        ProductName: '', ProductCategory: '', CostPrice: 0, Price: 0,
+        ProductDetail: '', AreaType: [], PlantType: [], Pressure: 'Low',
+        Stock: 0, YoutubeURL: '-', ProductStatus: 'Active'
+    });
+
+    const [imageFiles, setImageFiles] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [existingImages, setExistingImages] = useState([]); // สำหรับเก็บ URL ของรูปภาพเดิมเมื่อแก้ไขข้อมูล
+
+    const areaOptions = ["สวนหน้าบ้าน/จัดสวน", "สวนเกษตรขนาดใหญ่", "โรงเรือนเพาะชำ", "ไร่พืช/สวนผลไม้", "สนามหญ้า/สนามฟุตบอล"];
+    const plantOptions = ["ไม้ดอก/ไม้ประดับ", "ผักสวนครัว", "สนามหญ้า", "ไม้ผล (ทุเรียน/เงาะ)", "พืชไร่ (ข้าวโพด/อ้อย)"];
+
+    // ==========================================
+    // 1. ตรวจสอบสถานะ User และ Role
+    // ==========================================
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const docSnap = await getDoc(doc(db, 'users', user.uid));
+                if (docSnap.exists()) {
+                    setCurrentUser({ uid: user.uid, ...docSnap.data() });
+                }
+            } else {
+                setCurrentUser(null);
+            }
+        });
+        return () => unsubscribeAuth();
+    }, []);
+
+    // ==========================================
+    // 2. ดึงข้อมูลรายการสินค้า (Products)
+    // ==========================================
+    useEffect(() => {
+        const q = query(collection(db, 'products'));
+        const unsubscribeProducts = onSnapshot(q, (snapshot) => {
+            const productsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setProducts(productsData);
+            setLoading(false);
+        });
+        return () => unsubscribeProducts();
+    }, []);
+
+    // ==========================================
+    // 3. ดึงข้อมูลคำขออนุมัติ (ดึงเฉพาะตอนที่เป็น Manager) 🌟 จุดที่แก้ปัญหา 🌟
+    // ==========================================
+    useEffect(() => {
+        // รอให้ระบบเช็คจนแน่ใจก่อนว่า currentUser เป็น Manager จริงๆ ถึงจะเริ่มดึงข้อมูล
+        if (currentUser?.role === 'adminManager') {
+            const q = query(collection(db, 'admin_requests'), where('status', '==', 'PENDING'));
+            const unsubscribeRequests = onSnapshot(q, (snapshot) => {
+                // ใส่ Console log เพื่อความชัวร์ว่าข้อมูลเข้า
+                console.log("พบรายการรออนุมัติ: ", snapshot.docs.length, " รายการ");
+                setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(req => req.type && req.type.startsWith('PRODUCT_'))); // กรองเฉพาะคำขอที่เกี่ยวกับสินค้า
+            }, (error) => {
+                console.error("เกิดข้อผิดพลาดในการดึงข้อมูล Request: ", error);
+            });
+
+            return () => unsubscribeRequests();
+        } else {
+            setRequests([]); // ถ้าไม่ใช่ Manager ให้เคลียร์ค่าทิ้ง
+        }
+    }, [currentUser]); // ทำงานใหม่ทุกครั้งที่ currentUser เปลี่ยนแปลง
+
+    // ==========================================
+    // 4. จัดการการคลิกพื้นที่ว่างเพื่อปิด Dropdown
+    // ==========================================
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpenDropdownId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const isManager = currentUser?.role === 'adminManager';
+    const categories = ['All', ...new Set(products.map(p => p.ProductCategory).filter(Boolean))];
+
+    const openModal = (type, product = null) => {
+        setOpenDropdownId(null);
+        if (product) {
+            setFormData({
+                ProductName: product.ProductName || '',
+                ProductCategory: product.ProductCategory || '',
+                CostPrice: product.CostPrice || 0,
+                Price: product.Price || 0,
+                ProductDetail: product.ProductDetail || '',
+                Pressure: product.Pressure || 'Low',
+                Stock: product.Stock || 0,
+                ReasonSelect: '',
+                ReasonDetail: '', // สำหรับกรณีขอแก้ไขสต็อก
+                YoutubeURL: product.YoutubeURL || '',
+                ProductStatus: product.ProductStatus || 'Active',
+                AreaType: Array.isArray(product.AreaType) ? product.AreaType : [],
+                PlantType: Array.isArray(product.PlantType) ? product.PlantType : []
+            });
+            if (product.ProductPic) {
+                setExistingImages(Array.isArray(product.ProductPic) ? product.ProductPic : [product.ProductPic]);
+            } else {
+                setExistingImages([]);
+            }
+        } else {
+            setFormData({
+                ProductName: '', ProductCategory: '', CostPrice: 0, Price: 0,
+                ProductDetail: '', AreaType: [], PlantType: [], Pressure: 'Low',
+                Stock: 0, ReasonSelect: '', ReasonDetail: '', YoutubeURL: '-', ProductStatus: 'Active'
+            });
+            setImageFiles([]);
+            setImagePreviews([]);
+        }
+        setModalState({ type, isOpen: true, selectedProduct: product });
+    }
+
+    const closeModal = () => {
+        setModalState({ type: null, isOpen: false, selectedProduct: null });
+        setImageFiles([]);
+        setImagePreviews([]);
+    };
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        setImageFiles(files);
+
+        // เคลียร์ URL เดิมออกจากหน่วยความจำ
+        imagePreviews.forEach(url => URL.revokeObjectURL(url));
+
+        // สร้าง URL ชั่วคราวเพื่อให้เบราว์เซอร์โชว์รูปได้ทันที
+        const previews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(previews);
+    };
+
+    const handleUploadImages = async (targetId) => {
+        if (imageFiles.length === 0) return [];
+        const imageUrls = [];
+        for (let i = 0; i < imageFiles.length; i++) {
+            const file = imageFiles[i];
+            const storageRef = ref(storage, `Product IMG/${targetId}/${file.name}`);
+            await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(storageRef);
+            imageUrls.push(url);
+        }
+        return imageUrls;
+
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        const { type, selectedProduct } = modalState;
+
+        try {
+
+            if (type === 'INFO') {
+                const updateData = {
+                    ProductName: formData.ProductName,
+                    ProductDetail: formData.ProductDetail,
+                    ProductCategory: formData.ProductCategory,
+                    YoutubeURL: formData.YoutubeURL,
+                    Pressure: formData.Pressure,
+                    AreaType: formData.AreaType, // 🌟 ส่ง Array เข้าไปตรงๆ
+                    PlantType: formData.PlantType,
+                }
+
+                // if (imageFiles.length > 0) {
+                //     updateData.ProductPic = await handleUploadImages(formData.ProductName);
+                // }
+
+                await updateDoc(doc(db, 'products', selectedProduct.id), updateData);
+                toast.success('แก้ไขข้อมูลสินค้าสำเร็จ');
+                closeModal();
+                setIsSubmitting(false);
+                return;
+            }
+            if (type === 'IMAGE') {
+                // 1. อัปโหลดรูปใหม่ (ถ้ามีเลือกไว้)
+                let newUploadedUrls = [];
+                if (imageFiles.length > 0) {
+                    newUploadedUrls = await handleUploadImages(selectedProduct.id);
+                }
+
+                // 2. นำรูปเดิมที่เหลืออยู่ มาต่อกับรูปใหม่ที่เพิ่งอัปโหลด
+                const finalImages = [...existingImages, ...newUploadedUrls];
+
+                // 3. อัปเดตลง Firestore
+                await updateDoc(doc(db, "products", selectedProduct.id), { ProductPic: finalImages });
+                toast.success('อัปเดตรูปภาพสินค้าสำเร็จ');
+                closeModal();
+                setIsSubmitting(false);
+                return;
+            }
+
+            let requestData = {};
+            let actionText = '';
+
+            const newProductRef = doc(collection(db, "products"));
+            const targetProductId = selectedProduct ? selectedProduct.id : newProductRef.id;
+
+            if (type === 'ADD') {
+                actionText = 'เพิ่มสินค้าใหม่';
+                const uploadedPicUrls = await handleUploadImages(targetProductId);
+                requestData = {
+                    ...formData,
+                    CostPrice: Number(formData.CostPrice),
+                    Price: Number(formData.Price),
+                    Stock: Number(formData.Stock),
+                    AreaType: formData.AreaType, // ส่ง Array ตรงๆ
+                    PlantType: formData.PlantType, // ส่ง Array ตรงๆ
+                    ProductPic: uploadedPicUrls
+                };
+            }
+
+            // --- Use Case 11: แก้ไขราคา ---
+            else if (type === 'PRICE') {
+                actionText = 'แก้ไขราคา';
+                requestData = {
+                    NewPrice: Number(formData.Price),
+                    OldPrice: Number(selectedProduct.Price)
+                };
+            }
+            // --- Use Case 12: แก้ไขจำนวน (Stock) ---
+            else if (type === 'STOCK') {
+                actionText = 'แก้ไขจำนวนสินค้า';
+                const finalReason = formData.ReasonSelect === 'อื่นๆ' ? formData.ReasonDetail : formData.ReasonSelect;
+
+                requestData = {
+                    Stock: Number(formData.Stock),
+                    Reason: finalReason // 🌟 ส่งค่าที่จัดระเบียบแล้วเข้าไป
+                };
+            }
+            // --- Use Case 13: แก้ไขสถานะสินค้า ---
+            else if (type === 'STATUS') {
+                actionText = 'แก้ไขสถานะสินค้า';
+                requestData = { ProductStatus: formData.ProductStatus };
+            }
+
+            if (isManager) {
+                if (type === 'ADD') {
+                    await setDoc(newProductRef, requestData);
+                }
+                else if (type === 'STOCK') {
+                    // 1. อัปเดตเฉพาะค่า Stock ลงในคลังสินค้าหลัก
+                    await updateDoc(doc(db, 'products', selectedProduct.id), { Stock: requestData.Stock });
+
+                    // 2. สร้าง Transaction แยกเก็บประวัติ
+                    await addDoc(collection(db, "stock_transactions"), {
+                        productId: selectedProduct.id,
+                        productName: formData.ProductName,
+                        oldStock: selectedProduct.Stock,
+                        newStock: requestData.Stock,
+                        reason: requestData.Reason,
+                        actionBy: currentUser.uid,
+                        actionByName: `${currentUser.firstname} ${currentUser.surname || ''}`,
+                        actionType: 'DIRECT_EDIT', // ระบุว่า Manager แก้ไขเอง
+                        createdAt: serverTimestamp()
+                    });
+                }
+                else if (type === 'PRICE') {
+                    await updateDoc(doc(db, 'products', selectedProduct.id), {
+                        Price: requestData.NewPrice
+                    });
+                }
+                else {
+                    await updateDoc(doc(db, 'products', selectedProduct.id), requestData);
+                }
+                toast.success(`${actionText} สำเร็จ`);
+            } else {
+                await addDoc(collection(db, "admin_requests"), {
+                    type: `PRODUCT_${type}`, // PRODUCT_ADD, PRODUCT_PRICE, etc.
+                    targetProductId: targetProductId,
+                    targetProductName: formData.ProductName,
+                    data: requestData,
+                    requestedBy: currentUser.uid,
+                    requestedByName: `${currentUser.firstname} ${currentUser.surname || ''}`,
+                    status: 'PENDING',
+                    createdAt: serverTimestamp()
+                });
+                toast.success(`ส่งคำขอ ${actionText} สำเร็จ รอการอนุมัติจากผู้จัดการ`);
+            }
+
+            closeModal();
+        } catch (error) {
+            console.error(error);
+            toast.error(`เกิดข้อผิดพลาดในการ ${actionText}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.ProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.id?.includes(searchTerm);
+
+        const matchesCategory = selectedCategory === 'All' || product.ProductCategory === selectedCategory;
+        return matchesSearch && matchesCategory;
+    });
+
+    const handleCheckboxChange = (field, value) => {
+        setFormData(prev => {
+            const currentArray = prev[field] || [];
+            if (currentArray.includes(value)) {
+                return { ...prev, [field]: currentArray.filter(v => v !== value) };
+            } else {
+                return { ...prev, [field]: [...currentArray, value] };
+            }
+        });
+    };
+
+    const handleApproveRequest = async (request) => {
+        try {
+            if (request.type === 'PRODUCT_ADD') {
+                await setDoc(doc(db, "products", request.targetProductId), request.data);
+            }
+            else if (request.type === 'PRODUCT_STOCK') {
+                const originalProduct = products.find(p => p.id === request.targetProductId);
+
+                // 1. อัปเดตสต็อกสินค้าหลัก
+                await updateDoc(doc(db, 'products', request.targetProductId), { Stock: request.data.Stock });
+
+                // 2. บันทึกประวัติการอนุมัติ
+                await addDoc(collection(db, "stock_transactions"), {
+                    productId: request.targetProductId,
+                    productName: request.targetProductName,
+                    oldStock: originalProduct?.Stock || 0,
+                    newStock: request.data.Stock,
+                    reason: request.data.Reason,
+                    actionBy: currentUser.uid, // Manager ผู้อนุมัติ
+                    actionByName: `${currentUser.firstname} ${currentUser.surname || ''}`,
+                    requestedBy: request.requestedByName, // Employee ผู้ร้องขอ
+                    actionType: 'APPROVED_REQUEST',
+                    createdAt: serverTimestamp()
+                });
+            }
+
+            else if (request.type === 'PRODUCT_PRICE') {
+                // สั่งให้เอาค่า NewPrice ในคำขอ ไปอัปเดตใส่ฟิลด์ Price ของสินค้า
+                await updateDoc(doc(db, 'products', request.targetProductId), {
+                    Price: request.data.NewPrice
+                });
+            }
+            else {
+                await updateDoc(doc(db, 'products', request.targetProductId), request.data);
+            }
+
+            await updateDoc(doc(db, 'admin_requests', request.id), {
+                status: 'APPROVED',
+                updatedAt: serverTimestamp()
+            });
+            toast.success('อนุมัติรายการสำเร็จ ข้อมูลอัปเดตลงคลังสินค้าแล้ว');
+        } catch (error) {
+            console.error(error);
+            toast.error('เกิดข้อผิดพลาดในการอนุมัติ');
+        }
+    }
+
+    const handleRejectRequest = async (requestId) => {
+        if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการปฏิเสธคำขอรายการนี้?')) {
+            try {
+                await updateDoc(doc(db, 'admin_requests', requestId), {
+                    status: 'REJECTED',
+                    updatedAt: serverTimestamp()
+                });
+                toast.success('ปฏิเสธรายการคำขอสำเร็จ');
+            } catch (error) {
+                console.error(error);
+                toast.error('เกิดข้อผิดพลาดในการปฏิเสธคำขอ');
+            }
+        }
+    }
+
+    const getRequestDetails = (req) => {
+
+        const originalProduct = products.find(p => p.id === req.targetProductId);
+
+        switch (req.type) {
+            case 'PRODUCT_PRICE':
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className="text-gray-400 line-through">฿{originalProduct?.Price?.toLocaleString() || '-'}</span>
+                        <span className="text-green-600 font-bold">➔ ฿{req.data.NewPrice?.toLocaleString()}</span>
+                    </div>
+                );
+            case 'PRODUCT_STOCK':
+                return (
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                            <span className="text-gray-400 line-through">{originalProduct?.Stock || 0} ชิ้น</span>
+                            <span className="text-blue-600 font-bold">➔ {req.data.Stock} ชิ้น</span>
+                        </div>
+                        {req.data.Reason && (
+                            <div className="text-[11px] text-gray-500 bg-white px-2 py-1 rounded border border-gray-200">
+                                <span className="font-bold text-gray-700">เหตุผล:</span> {req.data.Reason}
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'PRODUCT_STATUS':
+                return (
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="text-gray-400 line-through">{originalProduct?.ProductStatus || 'Active'}</span>
+                        <span className="text-orange-600 font-bold">➔ {req.data.ProductStatus}</span>
+                    </div>
+                );
+            case 'PRODUCT_ADD':
+                return (
+                    <div className="text-emerald-600 text-xs font-semibold">
+                        เพิ่มสินค้าใหม่ (ราคา: ฿{req.data.Price?.toLocaleString()} | สต็อก: {req.data.Stock})
+                    </div>
+                );
+
+            default:
+                return <span className="text-gray-400">-</span>;
+        }
+    }
+
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        // ตรวจสอบว่าเป็น Firestore Timestamp หรือไม่
+        if (typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toLocaleString('th-TH', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        return '-';
+    };
+
+    const insertKeyword = (keyword) => {
+        setFormData(prev => {
+            const currentText = prev.ProductDetail || '';
+            // ถ้ามีข้อความอยู่แล้ว ให้ขึ้นบรรทัดใหม่ก่อนแทรกหัวข้อ แต่ถ้าว่างอยู่ให้ใส่หัวข้อได้เลย
+            const newText = currentText.length > 0 ? `${currentText}\n\n${keyword}\n` : `${keyword}\n`;
+            return { ...prev, ProductDetail: newText };
+        });
+    };
+
+    // 🌟 รายการคีย์เวิร์ดที่ตรงกับในหน้า ProductsDetailPage
+    const detailKeywords = ["คุณสมบัติ", "วิธีใช้งาน", "คำแนะนำ", "ข้อควรระวัง", "รายละเอียดสินค้า", "ข้อมูลทางเทคนิค", "ข้อมูลจำเพาะ", "ขนาดมิติ"];
+
+
+    return (
+        <div className="min-h-screen bg-[#F8FAFC] font-sans text-gray-800 flex flex-col">
+            <AdminNavbar />
+
+            <div className="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div className="flex items-center gap-6">
+                        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+
+                        {/* 🌟 แสดง Tabs ให้กดสลับหน้า (เฉพาะ Manager) */}
+                        {isManager && (
+                            <div className="flex bg-gray-200 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setActiveTab('PRODUCTS')}
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition ${activeTab === 'PRODUCTS' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    คลังสินค้า
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('REQUESTS')}
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition flex items-center gap-2 ${activeTab === 'REQUESTS' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    รออนุมัติ
+                                    {requests.length > 0 && (
+                                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{requests.length}</span>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {activeTab === 'PRODUCTS' && (
+                        <div className="flex gap-3">
+                            <button onClick={() => openModal('ADD')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm">
+                                <Plus size={16} /> Add product
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {activeTab === 'PRODUCTS' ? (
+
+                    <>
+
+                        {/* Filters & Tabs */}
+                        <div className="bg-white rounded-t-xl p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto custom-scrollbar pb-2 md:pb-0">
+                                {categories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setSelectedCategory(cat)}
+                                        className={`px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition
+                                    ${selectedCategory === cat ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        {cat} {cat === 'All' && <span className="ml-1 text-gray-400 font-normal">({products.length})</span>}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative w-full md:w-64 shrink-0">
+                                <input
+                                    type="text"
+                                    placeholder="Search product name..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-gray-50"
+                                />
+                                <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                            </div>
+                        </div>
+
+                        {/* Table Section */}
+                        <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 overflow-visible">
+                            <div className="overflow-x-auto overflow-y-visible">
+                                <table className="w-full text-left border-collapse min-w-[800px]">
+                                    <thead>
+                                        <tr className="bg-[#F8FAFC] border-b border-gray-200 text-[11px] text-gray-500 uppercase tracking-wider font-bold">
+                                            <th className="px-6 py-4">Product Name</th>
+                                            <th className="px-6 py-4">Category</th>
+                                            <th className="px-6 py-4 text-center">Stock</th>
+                                            <th className="px-6 py-4 text-right">Price</th>
+                                            <th className="px-6 py-4 text-center">Status</th>
+                                            <th className="px-6 py-4 text-center w-16"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-sm">
+                                        {loading ? (
+                                            <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">Loading products...</td></tr>
+                                        ) : filteredProducts.length === 0 ? (
+                                            <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">No products found.</td></tr>
+                                        ) : (
+                                            filteredProducts.map((product) => (
+                                                <tr key={product.id} className="hover:bg-gray-50/50 transition group">
+
+                                                    <td className="px-6 py-4 flex items-center gap-4">
+                                                        <img
+                                                            src={Array.isArray(product.ProductPic) ? product.ProductPic[0] : product.ProductPic || 'https://placehold.co/150'}
+                                                            alt={product.ProductName}
+                                                            className="w-12 h-12 rounded-lg object-cover border border-gray-200 bg-white"
+                                                        />
+                                                        <div>
+                                                            <p className="font-bold text-gray-900">{product.ProductName}</p>
+                                                            <p className="text-[10px] text-gray-400">ID: {product.id}</p>
+                                                        </div>
+                                                    </td>
+
+                                                    <td className="px-6 py-4 text-gray-600 font-medium">
+                                                        {product.ProductCategory}
+                                                    </td>
+
+                                                    <td className="px-6 py-4 text-center font-semibold text-gray-700">
+                                                        {product.Stock}
+                                                    </td>
+
+                                                    <td className="px-6 py-4 text-right font-bold text-gray-900">
+                                                        ฿{Number(product.Price).toLocaleString()}
+                                                    </td>
+
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full border 
+                                                    ${product.ProductStatus === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}
+                                                        >
+                                                            {product.ProductStatus || 'Active'}
+                                                        </span>
+                                                    </td>
+
+                                                    {/* --- เมนู 3 จุด (Action Menu) --- */}
+                                                    <td className="px-6 py-4 text-center relative" ref={openDropdownId === product.id ? dropdownRef : null}>
+                                                        <button
+                                                            onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-md transition"
+                                                        >
+                                                            <MoreHorizontal size={18} />
+                                                        </button>
+
+                                                        {openDropdownId === product.id && (
+                                                            <div className="absolute right-10 top-1/2 -translate-y-1/2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50 py-2 animate-fade-in text-left">
+                                                                <button onClick={() => openModal('INFO', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Edit size={14} /> แก้ไขข้อมูลทั่วไป</button>
+                                                                <button onClick={() => openModal('IMAGE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><ImagePlus size={14} /> จัดการรูปภาพ</button>
+                                                                <button onClick={() => openModal('PRICE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><DollarSign size={14} /> แก้ไขราคา</button>
+                                                                <button onClick={() => openModal('STOCK', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Package size={14} /> แก้ไขจำนวน (Stock)</button>
+                                                                <button onClick={() => openModal('STATUS', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Activity size={14} /> แก้ไขสถานะ</button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                            <thead>
+                                <tr className="bg-orange-50 border-b border-orange-100 text-[11px] text-orange-700 uppercase tracking-wider font-bold">
+                                    <th className="px-6 py-4">ผู้ขออนุมัติ</th>
+                                    <th className="px-6 py-4">ประเภทรายการ</th>
+                                    <th className="px-6 py-4 w-1/4">ชื่อสินค้าเป้าหมาย</th>
+                                    <th className="px-6 py-4">รายละเอียดการแก้ไข</th> {/* คอลัมน์ใหม่ */}
+                                    <th className="px-6 py-4">วันที่ส่งคำขอ</th>       {/* คอลัมน์ใหม่ */}
+                                    <th className="px-6 py-4 text-center">การจัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-sm">
+                                {requests.length === 0 ? (
+                                    <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">ไม่มีรายการรออนุมัติ</td></tr>
+                                ) : (
+                                    requests.map(req => (
+                                        <tr key={req.id} className="hover:bg-gray-50/50 transition">
+                                            <td className="px-6 py-4 font-medium text-gray-900">{req.requestedByName}</td>
+
+                                            <td className="px-6 py-4">
+                                                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-bold border border-blue-200">
+                                                    {req.type?.replace('PRODUCT_', '') || 'UNKNOWN'}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-6 py-4 text-gray-600 font-bold">
+                                                {req.targetProductName}
+                                            </td>
+
+                                            {/* 🌟 ส่วนแสดงรายละเอียดการแก้ไข 🌟 */}
+                                            <td className="px-6 py-4">
+                                                <div className="bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 inline-block">
+                                                    {getRequestDetails(req)}
+                                                </div>
+                                            </td>
+
+                                            {/* 🌟 ส่วนแสดงวันที่ส่งคำขอ 🌟 */}
+                                            <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                                                {formatTimestamp(req.createdAt)}
+                                            </td>
+
+                                            <td className="px-6 py-4 flex justify-center gap-2">
+                                                <button onClick={() => handleApproveRequest(req)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-xs font-bold transition shadow-sm">อนุมัติ</button>
+                                                <button onClick={() => handleRejectRequest(req.id)} className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded text-xs font-bold transition shadow-sm">ปฏิเสธ</button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+            </div>
+
+            {/* ========================================= */}
+            {/* ============= MODAL SECTION ============= */}
+            {/* ========================================= */}
+
+            {modalState.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                    <div className={`bg-white rounded-2xl shadow-2xl p-6 md:p-8 animate-fade-in-down w-full max-h-[90vh] overflow-y-auto custom-scrollbar
+                        ${['PRICE', 'STOCK', 'STATUS'].includes(modalState.type) ? 'max-w-md' : 'max-w-3xl'}`}
+                    >
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                {modalState.type === 'ADD' && "เพิ่มสินค้าใหม่"}
+                                {modalState.type === 'INFO' && "แก้ไขข้อมูลสินค้า (ทั่วไป)"}
+                                {modalState.type === 'IMAGE' && "จัดการรูปภาพสินค้า"}
+                                {modalState.type === 'PRICE' && "แก้ไขราคาสินค้า"}
+                                {modalState.type === 'STOCK' && "แก้ไขจำนวนสินค้า"}
+                                {modalState.type === 'STATUS' && "แก้ไขสถานะสินค้า"}
+                            </h2>
+                            <button onClick={closeModal} className="text-gray-400 hover:text-red-500 transition"><X size={24} /></button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+
+                            {/* --- FORM: แก้ไขราคา --- */}
+                            {modalState.type === 'PRICE' && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ราคาขาย (บาท) <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="number"
+                                        required min={Number(formData.CostPrice) + 1}
+                                        value={formData.Price}
+                                        onChange={e => {
+                                            e.target.setCustomValidity('');
+                                            setFormData({ ...formData, Price: e.target.value });
+                                        }}
+                                        onInvalid={e => {
+                                            const priceVal = Number(e.target.value);
+                                            const costVal = Number(formData.CostPrice);
+
+                                            if (!e.target.value) {
+                                                e.target.setCustomValidity('กรุณากรอกราคาสินค้า');
+                                            }
+                                            // 🌟 1. เช็คเรื่องติดลบหรือเท่ากับ 0 ก่อนเลย
+                                            else if (priceVal <= 0) {
+                                                e.target.setCustomValidity('ไม่สามารถกำหนดราคาที่ติดลบหรือเท่ากับ 0 ได้');
+                                            }
+                                            // 🌟 2. ถ้าไม่ติดลบ ค่อยมาเช็คว่าน้อยกว่าหรือเท่ากับต้นทุนไหม
+                                            else if (priceVal <= costVal) {
+                                                e.target.setCustomValidity('ราคาขายต้องมากกว่าราคาต้นทุน');
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 outline-none text-sm" />
+                                    <p className="text-xs text-gray-500 mt-2">ราคาต้นทุนเดิม: ฿{formData.CostPrice}</p>
+                                </div>
+                            )}
+
+                            {/* --- FORM: แก้ไข Stock --- */}
+                            {modalState.type === 'STOCK' && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนสินค้าคงเหลือ <span className="text-red-500">*</span></label>
+                                        <input type="number" required min="0" value={formData.Stock} onChange={e => setFormData({ ...formData, Stock: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 outline-none text-sm" />
+                                    </div>
+
+                                    <div className="border-t border-gray-100 pt-3">
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">สาเหตุการแก้ไข <span className="text-red-500">*</span></label>
+
+                                        {/* 🌟 1. Dropdown สาเหตุหลัก */}
+                                        <select
+                                            required
+                                            value={formData.ReasonSelect || ''}
+                                            onChange={e => {
+                                                e.target.setCustomValidity('');
+                                                setFormData({ ...formData, ReasonSelect: e.target.value });
+                                            }}
+                                            onInvalid={e => e.target.setCustomValidity('กรุณาเลือกสาเหตุการแก้ไขสต็อก')}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"
+                                        >
+                                            <option value="" disabled>-- โปรดเลือกสาเหตุ --</option>
+                                            <option value="รับสินค้าเข้าเพิ่ม (Restock)">รับสินค้าเข้าเพิ่ม (Restock)</option>
+                                            <option value="นับสต็อกประจำเดือน (Audit)">นับสต็อกประจำเดือน (Audit)</option>
+                                            <option value="สินค้าชำรุด / สูญหาย (Damaged/Lost)">สินค้าชำรุด / สูญหาย (Damaged/Lost)</option>
+                                            <option value="ส่งคืนผู้ผลิต (Return)">ส่งคืนผู้ผลิต (Return)</option>
+                                            <option value="อื่นๆ">อื่นๆ (โปรดระบุเพิ่มเติม)</option>
+                                        </select>
+
+                                        {/* 🌟 2. ช่องพิมพ์เพิ่ม จะโชว์ขึ้นมาก็ต่อเมื่อเลือก "อื่นๆ" เท่านั้น */}
+                                        {formData.ReasonSelect === 'อื่นๆ' && (
+                                            <div className="mt-3 animate-fade-in-down">
+                                                <textarea
+                                                    required
+                                                    rows="2"
+                                                    value={formData.ReasonDetail || ''}
+                                                    onChange={e => {
+                                                        e.target.setCustomValidity('');
+                                                        setFormData({ ...formData, ReasonDetail: e.target.value });
+                                                    }}
+                                                    onInvalid={e => e.target.setCustomValidity('กรุณาระบุสาเหตุเพิ่มเติมที่ช่องนี้')}
+                                                    className="w-full px-4 py-2 bg-white border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-400 outline-none text-sm resize-none"
+                                                    placeholder="กรุณาระบุสาเหตุที่ต้องการแก้ไขสต็อก..."
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- FORM: แก้ไข Status --- */}
+                            {modalState.type === 'STATUS' && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">สถานะสินค้า <span className="text-red-500">*</span></label>
+                                    <select value={formData.ProductStatus} onChange={e => setFormData({ ...formData, ProductStatus: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 outline-none text-sm">
+                                        <option value="Active">Active - พร้อมจำหน่าย</option>
+                                        <option value="Inactive">Inactive - ไม่พร้อมจำหน่าย</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {modalState.type === 'IMAGE' && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">รูปภาพปัจจุบัน (กดกากบาทเพื่อลบ)</label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                            {existingImages.length === 0 ? (
+                                                <p className="text-sm text-gray-400 col-span-full text-center py-4">ไม่มีรูปภาพ</p>
+                                            ) : (
+                                                existingImages.map((url, idx) => (
+                                                    <div key={idx} className="relative group aspect-square">
+                                                        <img src={url} alt="product" className="w-full h-full object-cover rounded-lg border border-gray-300 shadow-sm" />
+                                                        {/* ปุ่มกดลบรูปภาพ */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== idx))}
+                                                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition shadow-lg hover:bg-red-700"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-gray-100">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">เพิ่มรูปภาพใหม่ (เลือกพร้อมกันได้หลายรูป)</label>
+                                        <input
+                                            type="file" multiple accept="image/*"
+                                            onChange={handleFileChange} // 🌟 เปลี่ยนมาใช้ฟังก์ชันใหม่
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-pointer"
+                                        />
+
+                                        {/* 🌟 โชว์รูปตัวอย่าง */}
+                                        {imagePreviews.length > 0 && (
+                                            <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3">
+                                                {imagePreviews.map((src, index) => (
+                                                    <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-gray-300 shadow-sm">
+                                                        <img src={src} alt={`preview-${index}`} className="w-full h-full object-cover" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* --- FORM: เพิ่มสินค้า หรือ แก้ไขข้อมูลทั่วไป --- */}
+                            {['ADD', 'INFO'].includes(modalState.type) && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อสินค้า <span className="text-red-500">*</span></label>
+                                            <input type="text" required value={formData.ProductName} onChange={e => setFormData({ ...formData, ProductName: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">หมวดหมู่ (Category) <span className="text-red-500">*</span></label>
+                                            <select
+                                                required
+                                                value={formData.ProductCategory || ''}
+                                                onChange={e => setFormData({ ...formData, ProductCategory: e.target.value })}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                            >
+                                                <option value="" disabled>-- เลือกหมวดหมู่ --</option>
+                                                <option value="Pump">ปั๊มน้ำ (Pump)</option>
+                                                <option value="SolenoidValve">วาล์วไฟฟ้า (Solenoid Valve)</option>
+                                                <option value="Sprinkler">หัวจ่ายน้ำ (Sprinkler)</option>
+                                                <option value="Controller&Timer">ตัวควบคุม (Controller & Timer)</option>
+                                                <option value="Fitting&Pipe">ท่อและอุปกรณ์ข้อต่อ (Fitting & Pipe)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* ราคากับสต็อกจะโชว์เฉพาะตอน Add (ถ้าแก้ไข ต้องไปทำเมนูแยกตาม UC 11, 12) */}
+                                    {modalState.type === 'ADD' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">ต้นทุน (Cost) <span className="text-red-500">*</span></label>
+                                                <input type="number" required min="0" value={formData.CostPrice} onChange={e => setFormData({ ...formData, CostPrice: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">ราคาขาย (Price) <span className="text-red-500">*</span></label>
+                                                <input type="number" required min="0" value={formData.Price} onChange={e => setFormData({ ...formData, Price: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-1">สต็อก (Stock) <span className="text-red-500">*</span></label>
+                                                <input type="number" required min="0" value={formData.Stock} onChange={e => setFormData({ ...formData, Stock: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-2 gap-2">
+                                            <label className="block text-sm font-bold text-gray-700">รายละเอียดสินค้า</label>
+
+                                            {/* 🌟 ปุ่มแทรกหัวข้อย่อย */}
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {detailKeywords.map(kw => (
+                                                    <button
+                                                        key={kw}
+                                                        type="button"
+                                                        onClick={() => insertKeyword(kw)}
+                                                        className="px-2 py-1 text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 hover:border-blue-300 transition shadow-sm"
+                                                    >
+                                                        + {kw}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <textarea
+                                            rows="7"
+                                            value={formData.ProductDetail}
+                                            onChange={e => setFormData({ ...formData, ProductDetail: e.target.value })}
+                                            placeholder="พิมพ์รายละเอียดสินค้าที่นี่... (สามารถกดปุ่มด้านบนเพื่อแทรกหัวข้อหลักได้)"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm min-h-[150px] leading-relaxed">
+                                        </textarea>
+                                    </div>
+
+                                    <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">พื้นที่เหมาะสม</label>
+                                            <div className="flex flex-wrap gap-x-6 gap-y-3">
+                                                {areaOptions.map(option => (
+                                                    <label key={option} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-blue-600 transition">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.AreaType?.includes(option)}
+                                                            onChange={() => handleCheckboxChange('AreaType', option)}
+                                                            className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        {option}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-gray-200 pt-3">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">ชนิดพืชที่เหมาะสม</label>
+                                            <div className="flex flex-wrap gap-x-6 gap-y-3">
+                                                {plantOptions.map(option => (
+                                                    <label key={option} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer hover:text-blue-600 transition">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.PlantType?.includes(option)}
+                                                            onChange={() => handleCheckboxChange('PlantType', option)}
+                                                            className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        {option}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* --- แรงดันน้ำและ Youtube URL --- */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">แรงดันน้ำ</label>
+                                            <select value={formData.Pressure || 'Low'} onChange={e => setFormData({ ...formData, Pressure: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer">
+                                                <option value="Low">Low</option>
+                                                <option value="Low-Medium">Low-Medium</option>
+                                                <option value="Medium">Medium</option>
+                                                <option value="Medium-High">Medium-High</option>
+                                                <option value="High">High</option>
+                                                <option value="Very High">Very High</option>
+
+                                            </select>
+                                        </div>
+                                        <div className={modalState.type === 'ADD' ? "md:col-span-1" : "md:col-span-2"}>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Youtube URL</label>
+                                            <input type="text" value={formData.YoutubeURL} onChange={e => setFormData({ ...formData, YoutubeURL: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                                        </div>
+
+                                        {/* โชว์ปุ่มอัปโหลดเฉพาะตอนเพิ่มสินค้าใหม่ */}
+                                        {modalState.type === 'ADD' && (
+                                            <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">อัปโหลดรูปภาพ (เลือกพร้อมกันได้หลายรูป) <span className="text-red-500">*</span></label>
+                                                <input
+                                                    type="file" multiple accept="image/*"
+                                                    onChange={handleFileChange}
+                                                    className="w-full px-4 py-[5px] bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-pointer"
+                                                    required
+                                                />
+
+                                                {/* 🌟 โชว์รูปตัวอย่างที่เพิ่งเลือก */}
+                                                {imagePreviews.length > 0 && (
+                                                    <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                        {imagePreviews.map((src, index) => (
+                                                            <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-gray-300 shadow-sm">
+                                                                <img src={src} alt={`preview-${index}`} className="w-full h-full object-cover" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+
+                                </>
+                            )}
+
+                            {/* ข้อความเตือน Approval */}
+                            {!isManager && !['INFO', 'IMAGE'].includes(modalState.type) && (
+                                <div className="bg-orange-50 text-orange-700 p-3 rounded-lg text-xs font-medium flex items-start gap-2 border border-orange-100 mt-4">
+                                    <p>เนื่องจากคุณเป็น Employee การบันทึกข้อมูลส่วนนี้จะต้องรอให้ Manager อนุมัติก่อนถึงจะแสดงผลจริง</p>
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+                                <button type="button" onClick={closeModal} className="px-5 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">ยกเลิก</button>
+                                <button type="submit" disabled={isSubmitting} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 flex items-center gap-2">
+                                    {isSubmitting ? 'กำลังบันทึก...' : (isManager || modalState.type === 'INFO' ? 'บันทึกข้อมูล' : 'ส่งคำขออนุมัติ')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+export default AdminProductPage;

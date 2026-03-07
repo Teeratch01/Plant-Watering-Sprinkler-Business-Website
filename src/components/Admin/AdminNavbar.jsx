@@ -3,7 +3,7 @@ import { LogOut, User, LayoutDashboard, ClipboardList, MessageSquare, ChevronDow
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../FirebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc,collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 
 
 const AdminNavbar = () => {
@@ -14,6 +14,7 @@ const AdminNavbar = () => {
     const location = useLocation();
 
     const [pendingAdminCount, setPendingAdminCount] = useState(0);
+    const [pendingProductCount, setPendingProductCount] = useState(0);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -28,12 +29,29 @@ const AdminNavbar = () => {
                         if (data.role === 'adminManager') {
                             const q = query(collection(db, 'admin_requests'), where('status', '==', 'PENDING'));
                             const unsubscribeRequests = onSnapshot(q, (snapshot) => {
-                                setPendingAdminCount(snapshot.docs.length);
+                                let adminReq = 0;
+                                let productReq = 0;
+
+                                // 🌟 วนลูปเช็คเอกสารแต่ละตัวว่ามาจากระบบไหน
+                                snapshot.docs.forEach(doc => {
+                                    const reqData = doc.data();
+                                    // ถ้า type ขึ้นต้นด้วย PRODUCT_ ให้นับเป็นของสินค้า
+                                    if (reqData.type && reqData.type.startsWith('PRODUCT_')) {
+                                        productReq++;
+                                    } else {
+                                        // ถ้าไม่ใช่ ให้นับเป็นของ Admin Management (เช่น ADD_USER, CHANGE_STATUS)
+                                        adminReq++;
+                                    }
+                                });
+
+                                setPendingAdminCount(adminReq);       // อัปเดตตัวเลขฝั่ง Admin
+                                setPendingProductCount(productReq);
                             }
                             );
                             return () => unsubscribeRequests();
                         } else {
                             setPendingAdminCount(0);
+                            setPendingProductCount(0);
                         }
 
                     }
@@ -81,9 +99,15 @@ const AdminNavbar = () => {
             name: 'Order & Product MGMT',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
+            hasBadge: pendingProductCount > 0,
             subItems: [
                 { name: 'Managing Orders (คำสั่งซื้อ)', path: '/admin/orders', icon: <ClipboardList size={16} /> },
-                { name: 'Managing Stock (คลังสินค้า)', path: '/admin/products', icon: <Package size={16} /> }
+                {
+                    name: 'Managing Products & Stock (สินค้าและคลังสินค้า)',
+                    path: '/admin/products',
+                    icon: <Package size={16} />,
+                    badgeCount: pendingProductCount
+                }
             ]
         },
         {
