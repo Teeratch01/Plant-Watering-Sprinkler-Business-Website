@@ -29,6 +29,7 @@ import AdminSupportPage from './Pages/Admin/AdminSupportPage';
 import AdminOrdersPage from './Pages/Admin/AdminOrderPage';
 import AdminManagementPage from './Pages/Admin/AdminManagementPage';
 import AdminProductPage from './Pages/Admin/AdminProductPage';
+import AdminCustomerPage from './Pages/Admin/AdminCustomerPage';
 
 
 function HomePage() {
@@ -176,6 +177,12 @@ function App() {
         <Route path="/admin/products" element={
           <AdminRoute>
             <AdminProductPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/admin/customers" element={
+          <AdminRoute>
+            <AdminCustomerPage />
           </AdminRoute>
         } />
 
