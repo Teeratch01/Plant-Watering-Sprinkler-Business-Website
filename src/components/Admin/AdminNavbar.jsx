@@ -15,6 +15,9 @@ const AdminNavbar = () => {
 
     const [pendingAdminCount, setPendingAdminCount] = useState(0);
     const [pendingProductCount, setPendingProductCount] = useState(0);
+    const [pendingOrderCount, setPendingOrderCount] = useState(0);
+    const [pendingChatCount, setPendingChatCount] = useState(0);
+    const [pendingSupportCount, setPendingSupportCount] = useState(0);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -65,6 +68,41 @@ const AdminNavbar = () => {
         return () => unsubscribe();
     }, []);
 
+    useEffect(() => {
+        const qOrders = query(collection(db, 'orders'));
+        const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
+            // กรองเอาเฉพาะออเดอร์ที่ "กำลังดำเนินการ" (ยังไม่ส่งเสร็จ และ ไม่ถูกยกเลิก)
+            const activeOrders = snapshot.docs.filter(doc => {
+                const status = doc.data().OrderStatus || doc.data().Status || doc.data().status;
+                return status !== 'Deliver Complete' && status !== 'Cancelled';
+            });
+            // อัปเดตตัวเลขแจ้งเตือน
+            setPendingOrderCount(activeOrders.length);
+        });
+
+        return () => unsubscribeOrders(); // ล้างการทำงานเมื่อเปลี่ยนหน้า
+    }, []);
+
+    useEffect(() => {
+        // --- ดึงจำนวนแชทที่แอดมินยังไม่ได้อ่าน (อ้างอิงจาก unreadAdmin) ---
+        const qChats = query(collection(db, 'chats'), where('unreadAdmin', '==', true));
+        const unsubscribeChats = onSnapshot(qChats, (snapshot) => {
+            setPendingChatCount(snapshot.docs.length);
+        });
+
+        // --- ดึงจำนวนคำร้อง (Support) ที่ยังไม่ได้รับการแก้ไข ---
+        // 💡 หมายเหตุ: ตรวจสอบในฐานข้อมูลของคุณว่าใช้คำว่า 'pending' หรือ 'รอดำเนินการ' ในฟิลด์สถานะ
+        const qSupport = query(collection(db, 'support_requests'), where('status', '==', 'pending'));
+        const unsubscribeSupport = onSnapshot(qSupport, (snapshot) => {
+            setPendingSupportCount(snapshot.docs.length);
+        });
+
+        return () => {
+            unsubscribeChats();
+            unsubscribeSupport();
+        };
+    }, []);
+
     const handleLogout = async () => {
         try {
             await signOut(auth);
@@ -99,9 +137,14 @@ const AdminNavbar = () => {
             name: 'Order & Product MGMT',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
-            hasBadge: pendingProductCount > 0,
+            hasBadge: pendingProductCount > 0 || pendingOrderCount > 0,
             subItems: [
-                { name: 'Managing Orders (คำสั่งซื้อ)', path: '/admin/orders', icon: <ClipboardList size={16} /> },
+                {
+                    name: 'Managing Orders (คำสั่งซื้อ)',
+                    path: '/admin/orders',
+                    icon: <ClipboardList size={16} />,
+                    badgeCount: pendingOrderCount
+                },
                 {
                     name: 'Managing Products & Stock (สินค้าและคลังสินค้า)',
                     path: '/admin/products',
@@ -114,9 +157,20 @@ const AdminNavbar = () => {
             name: 'Helpdesk',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
+            hasBadge: pendingChatCount > 0 || pendingSupportCount > 0,
             subItems: [
-                { name: 'Support Center (ตอบคำร้อง)', path: '/admin/support', icon: <HandHelping size={16} /> },
-                { name: 'Chat (แชต)', path: '/admin/chat', icon: <MessageSquare size={16} /> }
+                {
+                    name: 'Support Center (ตอบคำร้อง)',
+                    path: '/admin/support',
+                    icon: <HandHelping size={16} />,
+                    badgeCount: pendingSupportCount
+                },
+                {
+                    name: 'Chat (แชต)',
+                    path: '/admin/chat',
+                    icon: <MessageSquare size={16} />,
+                    badgeCount: pendingChatCount
+                }
             ]
         },
     ];

@@ -2,7 +2,7 @@ import React, { useState, useEffect, use } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import AdminNavbar from '../../components/Admin/AdminNavbar';
-import { Search, Package, Clock, CheckCircle, XCircle, Truck, PackageCheck, AlertCircle, Calendar as CalendarIcon, FilterX } from 'lucide-react';
+import { Search, Package, Clock, CheckCircle, XCircle, Truck, PackageCheck, AlertCircle, Calendar as CalendarIcon, FilterX, Eye, Receipt } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,6 +35,7 @@ function AdminOrderPage() {
 
     const navigate = useNavigate();
     const [cancelModal, setCancelModal] = useState({ isOpen: false, orderId: null, reason: '', customReason: '' });
+    const [viewModal, setViewModal] = useState({ isOpen: false, order: null });
 
     useEffect(() => {
         const q = query(collection(db, "orders"), orderBy("OrderDate", "desc"));
@@ -295,24 +296,33 @@ function AdminOrderPage() {
                                                 {Number(order.TotalPrice).toLocaleString()}
                                             </td>
 
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex flex-col gap-1">
-                                                    <select
-                                                        value={order.OrderStatus}
-                                                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                                                        className={`text-xs font-bold px-3 py-1.5 rounded-full border outline-none cursor-pointer appearance-none ${getStatusStyle(order.OrderStatus)}`}
-                                                    >
-                                                        {STATUS_OPTIONS.map(status => (
-                                                            <option key={status} value={status} className="bg-white text-gray-800">
-                                                                {status}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    {order.OrderStatus === 'Cancelled' && order.CancelReason && (
-                                                        <span className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate" title={order.CancelReason}>
-                                                            เหตุผล: {order.CancelReason}
-                                                        </span>
-                                                    )}
+                                            <td className="px-4 py-3 text-center">
+                                                {/* 🌟 จัดกลุ่มปุ่มดวงตา กับ Dropdown ให้อยู่บรรทัดเดียวกัน */}
+                                                <div className="flex flex-col gap-2 w-40 mx-auto">
+                                                    <div className="flex items-center gap-2">
+
+
+                                                        {/* Dropdown เปลี่ยนสถานะ */}
+                                                        <select
+                                                            value={order.Status || order.status || ''}
+                                                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                            className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer bg-white"
+                                                            disabled={order.Status === 'Cancelled' || order.status === 'Cancelled'}
+                                                        >
+                                                            {STATUS_OPTIONS.map(status => (
+                                                                <option key={status} value={status}>{status}</option>
+                                                            ))}
+                                                        </select>                                                        {/* ปุ่มดูรายละเอียด */}
+                                                        <button
+                                                            onClick={() => setViewModal({ isOpen: true, order: order })}
+                                                            className="flex-shrink-0 p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:shadow-md rounded-lg transition border border-blue-200"
+                                                            title="ดูรายละเอียดคำสั่งซื้อ"
+                                                        >
+                                                            <Eye size={18} />
+                                                        </button>
+                                                    </div>
+
+
                                                 </div>
                                             </td>
                                         </tr>
@@ -364,7 +374,7 @@ function AdminOrderPage() {
 
                         <div className="flex justify-end gap-3">
                             <button
-                                onClick={() => setCancelModal({ isOpen: false, orderId: null, reason: '' , customReason: '' })}
+                                onClick={() => setCancelModal({ isOpen: false, orderId: null, reason: '', customReason: '' })}
                                 className="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
                             >
                                 ย้อนกลับ
@@ -375,6 +385,118 @@ function AdminOrderPage() {
                             >
                                 ยืนยันการยกเลิก
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================== */}
+            {/* 🌟 Modal: ดูรายละเอียดคำสั่งซื้อ (View Order Details) */}
+            {/* ========================================== */}
+            {viewModal.isOpen && viewModal.order && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-fade-in-down">
+
+                        {/* Header */}
+                        <div className="flex justify-between items-center p-5 md:p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <Receipt className="text-blue-600" /> รายละเอียดคำสั่งซื้อ
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1 font-mono">Order ID: {viewModal.order.id}</p>
+                            </div>
+                            <button onClick={() => setViewModal({ isOpen: false, order: null })} className="text-gray-400 hover:text-red-500 transition text-xl font-bold p-1">
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Body (Scrollable) */}
+                        <div className="p-5 md:p-6 overflow-y-auto custom-scrollbar flex-1">
+
+                            {/* ส่วนที่ 1: ข้อมูลลูกค้า & ที่อยู่จัดส่ง */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <h3 className="text-sm font-bold text-blue-800 mb-3 border-b border-blue-200 pb-2">ข้อมูลลูกค้า</h3>
+                                    <p className="text-sm text-gray-700 mb-1">
+                                        <span className="font-semibold">ชื่อ-นามสกุล:</span> {viewModal.order.CustomerName || '-'}
+                                    </p>
+                                    <p className="text-sm text-gray-700 mb-1">
+                                        <span className="font-semibold">เบอร์โทร:</span> {viewModal.order.CustomerPhone || '-'}
+                                    </p>
+                                    {viewModal.order.CustomerEmail && (
+                                        <p className="text-sm text-gray-700 mb-1">
+                                            <span className="font-semibold">อีเมล:</span> {viewModal.order.CustomerEmail}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+                                    <h3 className="text-sm font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">ที่อยู่จัดส่ง</h3>
+                                    <p className="text-sm text-gray-700 leading-relaxed">
+                                        {/* ดึงจากฟิลด์ ShippingAddress ตามฐานข้อมูลของคุณเป๊ะๆ */}
+                                        {(() => {
+                                            const addr = viewModal.order.ShippingAddress || viewModal.order.Address;
+                                            if (typeof addr === 'object' && addr !== null) {
+                                                return `${addr.Address || ''} ${addr.SubDistrict || ''} ${addr.District || ''} ${addr.Province || ''} ${addr.Zipcode || ''}`;
+                                            }
+                                            return addr || 'ไม่ได้ระบุข้อมูลที่อยู่';
+                                        })()}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* ส่วนที่ 2: รายการสินค้าที่สั่ง */}
+                            <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <Package size={16} /> รายการสินค้า
+                            </h3>
+                            <div className="border border-gray-200 rounded-xl overflow-hidden mb-6">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold">สินค้า</th>
+                                            <th className="px-4 py-3 font-semibold text-center">ราคา/ชิ้น</th>
+                                            <th className="px-4 py-3 font-semibold text-center">จำนวน</th>
+                                            <th className="px-4 py-3 font-semibold text-right">รวม</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {/* ดึงจาก Array ชื่อ Items และ Quantity ตามฐานข้อมูล */}
+                                        {(viewModal.order.Items || []).map((item, index) => (
+                                            <tr key={index} className="hover:bg-gray-50/50">
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-gray-800">{item.ProductName || 'ไม่ทราบชื่อสินค้า'}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-gray-600">฿{(item.Price || 0).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="bg-gray-100 px-2 py-1 rounded text-gray-700">{item.Quantity || 1}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-medium text-gray-800">
+                                                    ฿{((item.Price || 0) * (item.Quantity || 1)).toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* ส่วนที่ 3: สรุปยอดและช่องทางชำระเงิน */}
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-500 mb-1">ช่องทางการชำระเงิน</p>
+                                    <div className="font-bold text-gray-800 flex items-center gap-2">
+                                        {viewModal.order.PaymentMethod === 'PromptPay' ? '📱 พร้อมเพย์ (PromptPay)' :
+                                            viewModal.order.PaymentMethod === 'Credit Card' ? '💳 บัตรเครดิต/เดบิต' :
+                                                viewModal.order.PaymentMethod || 'ไม่ระบุ'}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm text-gray-500 mb-1">ยอดชำระสุทธิ (Total Amount)</p>
+                                    <div className="text-2xl font-black text-blue-600">
+                                        ฿{(viewModal.order.TotalPrice || 0).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>

@@ -327,6 +327,26 @@ function AdminProductPage() {
         return matchesSearch && matchesCategory;
     });
 
+    const sortedProducts = [...filteredProducts].sort((a, b) => {
+        const stockA = Number(a.Stock || 0);
+        const stockB = Number(b.Stock || 0);
+
+        const getStockPriority = (stock) => {
+            if (stock === 0) return 0; // ของหมด
+            if (stock < 5) return 1; // ของเหลือน้อย
+            return 2; // ของปกติ
+        };
+
+        const priorityA = getStockPriority(stockA);
+        const priorityB = getStockPriority(stockB);
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB; // เรียงตามลำดับความสำคัญของ Stock
+        } 
+
+        return a.ProductName?.localeCompare(b.ProductName || '') || 0;
+    });
+
     const handleCheckboxChange = (field, value) => {
         setFormData(prev => {
             const currentArray = prev[field] || [];
@@ -559,65 +579,88 @@ function AdminProductPage() {
                                     <tbody className="divide-y divide-gray-100 text-sm">
                                         {loading ? (
                                             <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">Loading products...</td></tr>
-                                        ) : filteredProducts.length === 0 ? (
+                                        ) : sortedProducts.length === 0 ? (
                                             <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">No products found.</td></tr>
                                         ) : (
-                                            filteredProducts.map((product) => (
-                                                <tr key={product.id} className="hover:bg-gray-50/50 transition group">
+                                            sortedProducts.map((product) => {
+                                                // 🌟 1. เช็คจำนวน Stock
+                                                const stockQty = Number(product.Stock || 0);
 
-                                                    <td className="px-6 py-4 flex items-center gap-4">
-                                                        <img
-                                                            src={Array.isArray(product.ProductPic) ? product.ProductPic[0] : product.ProductPic || 'https://placehold.co/150'}
-                                                            alt={product.ProductName}
-                                                            className="w-12 h-12 rounded-lg object-cover border border-gray-200 bg-white"
-                                                        />
-                                                        <div>
-                                                            <p className="font-bold text-gray-900">{product.ProductName}</p>
-                                                            <p className="text-[10px] text-gray-400">ID: {product.id}</p>
-                                                        </div>
-                                                    </td>
+                                                // 🌟 2. กำหนดสี Background ของแถว (รวมคลาส group เดิมของคุณไว้ด้วย)
+                                                let rowBgClass = "hover:bg-gray-50/50 transition group"; // ค่าปกติ
+                                                if (stockQty === 0) {
+                                                    rowBgClass = "bg-red-50 hover:bg-red-100 transition group"; // ของหมด (สีแดง)
+                                                } else if (stockQty < 5) {
+                                                    rowBgClass = "bg-yellow-50 hover:bg-yellow-100 transition group"; // ของเหลือน้อย (สีเหลือง)
+                                                }
 
-                                                    <td className="px-6 py-4 text-gray-600 font-medium">
-                                                        {product.ProductCategory}
-                                                    </td>
+                                                // 🌟 3. กำหนดสีตัวหนังสือในช่อง Stock
+                                                let stockTextClass = "text-gray-700 font-semibold"; // ค่าปกติ
+                                                if (stockQty === 0) {
+                                                    stockTextClass = "text-red-600 font-bold"; // ของหมด
+                                                } else if (stockQty < 5) {
+                                                    stockTextClass = "text-amber-600 font-bold"; // ของเหลือน้อย (ใช้สี Amber จะสวยกว่าตอนอยู่บนพื้นเหลืองอ่อน)
+                                                }
 
-                                                    <td className="px-6 py-4 text-center font-semibold text-gray-700">
-                                                        {product.Stock}
-                                                    </td>
+                                                // 🌟 4. คืนค่าแท็ก <tr> (อย่าลืมใส่คำว่า return)
+                                                return (
+                                                    <tr key={product.id} className={rowBgClass}>
 
-                                                    <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                                        ฿{Number(product.Price).toLocaleString()}
-                                                    </td>
-
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full border 
-                                                    ${product.ProductStatus === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}
-                                                        >
-                                                            {product.ProductStatus || 'Active'}
-                                                        </span>
-                                                    </td>
-
-                                                    {/* --- เมนู 3 จุด (Action Menu) --- */}
-                                                    <td className="px-6 py-4 text-center relative" ref={openDropdownId === product.id ? dropdownRef : null}>
-                                                        <button
-                                                            onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
-                                                            className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-md transition"
-                                                        >
-                                                            <MoreHorizontal size={18} />
-                                                        </button>
-
-                                                        {openDropdownId === product.id && (
-                                                            <div className="absolute right-10 top-1/2 -translate-y-1/2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50 py-2 animate-fade-in text-left">
-                                                                <button onClick={() => openModal('INFO', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Edit size={14} /> แก้ไขข้อมูลทั่วไป</button>
-                                                                <button onClick={() => openModal('IMAGE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><ImagePlus size={14} /> จัดการรูปภาพ</button>
-                                                                <button onClick={() => openModal('PRICE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><DollarSign size={14} /> แก้ไขราคา</button>
-                                                                <button onClick={() => openModal('STOCK', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Package size={14} /> แก้ไขจำนวน (Stock)</button>
-                                                                <button onClick={() => openModal('STATUS', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Activity size={14} /> แก้ไขสถานะ</button>
+                                                        <td className="px-6 py-4 flex items-center gap-4">
+                                                            <img
+                                                                src={Array.isArray(product.ProductPic) ? product.ProductPic[0] : product.ProductPic || 'https://placehold.co/150'}
+                                                                alt={product.ProductName}
+                                                                className="w-12 h-12 rounded-lg object-cover border border-gray-200 bg-white"
+                                                            />
+                                                            <div>
+                                                                <p className="font-bold text-gray-900">{product.ProductName}</p>
+                                                                <p className="text-[10px] text-gray-400">ID: {product.id}</p>
                                                             </div>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+
+                                                        <td className="px-6 py-4 text-gray-600 font-medium">
+                                                            {product.ProductCategory}
+                                                        </td>
+
+                                                        {/* 🌟 5. เรียกใช้ตัวแปรสีข้อความตรงนี้ */}
+                                                        <td className={`px-6 py-4 text-center ${stockTextClass}`}>
+                                                            {product.Stock}
+                                                        </td>
+
+                                                        <td className="px-6 py-4 text-right font-bold text-gray-900">
+                                                            ฿{Number(product.Price).toLocaleString()}
+                                                        </td>
+
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className={`text-[10px] font-bold px-3 py-1 rounded-full border 
+                    ${product.ProductStatus === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}
+                                                            >
+                                                                {product.ProductStatus || 'Active'}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* --- เมนู 3 จุด (Action Menu) --- */}
+                                                        <td className="px-6 py-4 text-center relative" ref={openDropdownId === product.id ? dropdownRef : null}>
+                                                            <button
+                                                                onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
+                                                                className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-md transition"
+                                                            >
+                                                                <MoreHorizontal size={18} />
+                                                            </button>
+
+                                                            {openDropdownId === product.id && (
+                                                                <div className="absolute right-10 top-1/2 -translate-y-1/2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-50 py-2 animate-fade-in text-left">
+                                                                    <button onClick={() => openModal('INFO', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Edit size={14} /> แก้ไขข้อมูลทั่วไป</button>
+                                                                    <button onClick={() => openModal('IMAGE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><ImagePlus size={14} /> จัดการรูปภาพ</button>
+                                                                    <button onClick={() => openModal('PRICE', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><DollarSign size={14} /> แก้ไขราคา</button>
+                                                                    <button onClick={() => openModal('STOCK', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Package size={14} /> แก้ไขจำนวน (Stock)</button>
+                                                                    <button onClick={() => openModal('STATUS', product)} className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2"><Activity size={14} /> แก้ไขสถานะ</button>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>

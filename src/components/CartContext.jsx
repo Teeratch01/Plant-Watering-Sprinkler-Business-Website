@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, use } from 'react';
+import { toast } from 'react-toastify';
 
 const CartContext = createContext();
 
@@ -21,19 +22,25 @@ export const CartProvider = ({ children }) => {
     }, [cartItems]);
 
     const addToCart = (product, quantity = 1) => {
+        // 🌟 1. เช็คสต็อกก่อนเอาเข้าตะกร้า
+        const existingItem = cartItems.find((item) => item.id === product.id);
+        const stock = Number(product.Stock || product.stock || 999);
+
+        if (existingItem) {
+            const currentQty = existingItem.quantity;
+            if (currentQty + quantity > stock) {
+                toast.warn(`สินค้ามีเพียง ${stock} ชิ้น`);
+                return; // หยุดการทำงาน ไม่ต้องเอาเข้าตะกร้า
+            }
+        } else if (quantity > stock) {
+            toast.warn(`สินค้ามีเพียง ${stock} ชิ้น`);
+            return;
+        }
+
+        // 🌟 2. ถ้าของมีพอ ค่อยสั่งอัปเดตตะกร้า
         setCartItems((prevItems) => {
-
-            const existingItem = prevItems.find((item) => item.id === product.id);
-            if (existingItem) {
-                // เช็ค Stock ก่อนบวกเพิ่ม (ถ้ามีข้อมูล Stock)
-                const currentQty = existingItem.quantity;
-                const stock = Number(product.Stock || 999);
-
-                if (currentQty + quantity > stock) {
-                    toast.warn(`สินค้ามีเพียง ${stock} ชิ้น`);
-                    return prevItems;
-                }
-
+            const itemExists = prevItems.find((item) => item.id === product.id);
+            if (itemExists) {
                 return prevItems.map((item) =>
                     item.id === product.id
                         ? { ...item, quantity: item.quantity + quantity }
@@ -42,9 +49,11 @@ export const CartProvider = ({ children }) => {
             } else {
                 return [...prevItems, { ...product, quantity }];
             }
-        })
+        });
 
-    }
+        // แถมให้: ถ้าอยากให้มีแจ้งเตือนตอนหยิบใส่ตะกร้าสำเร็จ สามารถใช้บรรทัดล่างนี้ได้ครับ
+        // toast.success("เพิ่มสินค้าลงตะกร้าแล้ว!");
+    };
 
     const removeFromCart = (productId) => {
         setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId));
@@ -52,24 +61,24 @@ export const CartProvider = ({ children }) => {
     };
 
     const updateQuantity = (productId, type) => {
+
+        const itemToUpdate = cartItems.find((item) => item.id === productId);
+        if (!itemToUpdate) return;
+
+        const stock = Number(itemToUpdate.Stock || itemToUpdate.stock || 999);
+
+        if (type === 'plus' && itemToUpdate.quantity >= stock) {
+            toast.info(`มีสินค้าใน Stock เพียง ${stock} ชิ้น ถ้าสนใจกรุณาติดต่อช่องทาง Support ของเรา`);
+            return;
+        }
         setCartItems((prevItems) => {
             return prevItems.map((item) => {
                 if (item.id === productId) {
-                    const stock = Number(item.Stock || 999);
-
                     if (type === 'plus') {
-                        if (item.quantity < stock) {
-                            return { ...item, quantity: item.quantity + 1 };
-                        } else {
-                            toast.info(`มีสินค้าเพียง ${stock} ชิ้น`);
-                        }
+                        return { ...item, quantity: item.quantity + 1 };
                     }
-
-                    if (type === 'minus') {
-                        // ถ้าเหลือ 1 แล้วกดลบ -> ไม่ทำอะไร (หรือจะให้ลบเลยก็ได้ แต่ปกติ UI จะมีปุ่มลบแยก)
-                        if (item.quantity > 1) {
-                            return { ...item, quantity: item.quantity - 1 };
-                        }
+                    else if (type === 'minus' && item.quantity > 1) {
+                        return { ...item, quantity: item.quantity - 1 };
                     }
                 }
                 return item;
@@ -111,7 +120,7 @@ export const CartProvider = ({ children }) => {
 
 
     return (
-        <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, getCartCount, getCartTotal, setCartItems,updateCartItem }}>
+        <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, getCartCount, getCartTotal, setCartItems, updateCartItem }}>
             {children}
         </CartContext.Provider>
     );

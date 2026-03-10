@@ -5,7 +5,7 @@ import deliveryimg from './assets/Home/Delivery.jpg';
 import supportimg from './assets/Home/Support.jpg';
 import './App.css'
 import Footer from './components/Footer';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import Login from './Pages/Login';
 import Register from './Pages/Register';
 import ProductsPage from './Pages/ProductsPage';
@@ -32,8 +32,13 @@ import AdminProductPage from './Pages/Admin/AdminProductPage';
 import AdminCustomerPage from './Pages/Admin/AdminCustomerPage';
 
 
+import { auth, db } from './FirebaseConfig'; // เช็ค Path ให้ตรงกับโปรเจกต์คุณ
+import { doc, getDoc } from 'firebase/firestore';
+
+
 function HomePage() {
   // const [count, setCount] = useState(0)
+  const navigate = useNavigate();
   const services = [
     {
       id: 1,
@@ -57,6 +62,30 @@ function HomePage() {
       position: "object-top"
     }
   ]
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+
+            if (userData.role === 'admin' || userData.role === 'adminManager') {
+              navigate('/admin/dashboard');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
 
 
 

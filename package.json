@@ -11,12 +11,14 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@vnedyalk0v/react19-simple-maps": "^2.0.2",
     "firebase": "^12.7.0",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.12.0",
     "react-toastify": "^11.0.5",
+    "recharts": "^3.8.0",
     "simple-icons": "^16.8.0",
     "thai-address-autocomplete-react": "^1.2.2"
   },

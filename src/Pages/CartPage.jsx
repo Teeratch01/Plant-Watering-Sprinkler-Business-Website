@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import { useCart } from '../components/CartContext';
 import { Trash2, Minus, Plus, ChevronLeft, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 function CartPage() {
     const { cartItems, updateQuantity, removeFromCart, getCartTotal } = useCart();
