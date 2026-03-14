@@ -109,7 +109,7 @@ function Login() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-gray-700 font-medium">Password</label>
-                {/* 🌟 เพิ่มปุ่ม ลืมรหัสผ่าน? ตรงนี้ */}
+                {/* . เพิ่มปุ่ม ลืมรหัสผ่าน? ตรงนี้ */}
                 <button
                   type="button"
                   onClick={() => setIsResetModalOpen(true)}

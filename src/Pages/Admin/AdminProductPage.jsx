@@ -73,7 +73,7 @@ function AdminProductPage() {
     }, []);
 
     // ==========================================
-    // 3. ดึงข้อมูลคำขออนุมัติ (ดึงเฉพาะตอนที่เป็น Manager) 🌟 จุดที่แก้ปัญหา 🌟
+    // 3. ดึงข้อมูลคำขออนุมัติ (ดึงเฉพาะตอนที่เป็น Manager) . จุดที่แก้ปัญหา .
     // ==========================================
     useEffect(() => {
         // รอให้ระบบเช็คจนแน่ใจก่อนว่า currentUser เป็น Manager จริงๆ ถึงจะเริ่มดึงข้อมูล
@@ -190,7 +190,7 @@ function AdminProductPage() {
                     ProductCategory: formData.ProductCategory,
                     YoutubeURL: formData.YoutubeURL,
                     Pressure: formData.Pressure,
-                    AreaType: formData.AreaType, // 🌟 ส่ง Array เข้าไปตรงๆ
+                    AreaType: formData.AreaType, // . ส่ง Array เข้าไปตรงๆ
                     PlantType: formData.PlantType,
                 }
 
@@ -257,7 +257,7 @@ function AdminProductPage() {
 
                 requestData = {
                     Stock: Number(formData.Stock),
-                    Reason: finalReason // 🌟 ส่งค่าที่จัดระเบียบแล้วเข้าไป
+                    Reason: finalReason // . ส่งค่าที่จัดระเบียบแล้วเข้าไป
                 };
             }
             // --- Use Case 13: แก้ไขสถานะสินค้า ---
@@ -486,7 +486,7 @@ function AdminProductPage() {
         });
     };
 
-    // 🌟 รายการคีย์เวิร์ดที่ตรงกับในหน้า ProductsDetailPage
+    // . รายการคีย์เวิร์ดที่ตรงกับในหน้า ProductsDetailPage
     const detailKeywords = ["คุณสมบัติ", "วิธีใช้งาน", "คำแนะนำ", "ข้อควรระวัง", "รายละเอียดสินค้า", "ข้อมูลทางเทคนิค", "ข้อมูลจำเพาะ", "ขนาดมิติ"];
 
 
@@ -500,7 +500,7 @@ function AdminProductPage() {
                     <div className="flex items-center gap-6">
                         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
 
-                        {/* 🌟 แสดง Tabs ให้กดสลับหน้า (เฉพาะ Manager) */}
+                        {/* . แสดง Tabs ให้กดสลับหน้า (เฉพาะ Manager) */}
                         {isManager && (
                             <div className="flex bg-gray-200 p-1 rounded-lg">
                                 <button
@@ -583,10 +583,10 @@ function AdminProductPage() {
                                             <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">No products found.</td></tr>
                                         ) : (
                                             sortedProducts.map((product) => {
-                                                // 🌟 1. เช็คจำนวน Stock
+                                                // . 1. เช็คจำนวน Stock
                                                 const stockQty = Number(product.Stock || 0);
 
-                                                // 🌟 2. กำหนดสี Background ของแถว (รวมคลาส group เดิมของคุณไว้ด้วย)
+                                                // . 2. กำหนดสี Background ของแถว (รวมคลาส group เดิมของคุณไว้ด้วย)
                                                 let rowBgClass = "hover:bg-gray-50/50 transition group"; // ค่าปกติ
                                                 if (stockQty === 0) {
                                                     rowBgClass = "bg-red-50 hover:bg-red-100 transition group"; // ของหมด (สีแดง)
@@ -594,7 +594,7 @@ function AdminProductPage() {
                                                     rowBgClass = "bg-yellow-50 hover:bg-yellow-100 transition group"; // ของเหลือน้อย (สีเหลือง)
                                                 }
 
-                                                // 🌟 3. กำหนดสีตัวหนังสือในช่อง Stock
+                                                // . 3. กำหนดสีตัวหนังสือในช่อง Stock
                                                 let stockTextClass = "text-gray-700 font-semibold"; // ค่าปกติ
                                                 if (stockQty === 0) {
                                                     stockTextClass = "text-red-600 font-bold"; // ของหมด
@@ -602,7 +602,7 @@ function AdminProductPage() {
                                                     stockTextClass = "text-amber-600 font-bold"; // ของเหลือน้อย (ใช้สี Amber จะสวยกว่าตอนอยู่บนพื้นเหลืองอ่อน)
                                                 }
 
-                                                // 🌟 4. คืนค่าแท็ก <tr> (อย่าลืมใส่คำว่า return)
+                                                // . 4. คืนค่าแท็ก <tr> (อย่าลืมใส่คำว่า return)
                                                 return (
                                                     <tr key={product.id} className={rowBgClass}>
 
@@ -622,7 +622,7 @@ function AdminProductPage() {
                                                             {product.ProductCategory}
                                                         </td>
 
-                                                        {/* 🌟 5. เรียกใช้ตัวแปรสีข้อความตรงนี้ */}
+                                                        {/* . 5. เรียกใช้ตัวแปรสีข้อความตรงนี้ */}
                                                         <td className={`px-6 py-4 text-center ${stockTextClass}`}>
                                                             {product.Stock}
                                                         </td>
@@ -698,14 +698,14 @@ function AdminProductPage() {
                                                 {req.targetProductName}
                                             </td>
 
-                                            {/* 🌟 ส่วนแสดงรายละเอียดการแก้ไข 🌟 */}
+                                            {/* . ส่วนแสดงรายละเอียดการแก้ไข . */}
                                             <td className="px-6 py-4">
                                                 <div className="bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 inline-block">
                                                     {getRequestDetails(req)}
                                                 </div>
                                             </td>
 
-                                            {/* 🌟 ส่วนแสดงวันที่ส่งคำขอ 🌟 */}
+                                            {/* . ส่วนแสดงวันที่ส่งคำขอ . */}
                                             <td className="px-6 py-4 text-xs text-gray-500 font-medium">
                                                 {formatTimestamp(req.createdAt)}
                                             </td>
@@ -766,11 +766,11 @@ function AdminProductPage() {
                                             if (!e.target.value) {
                                                 e.target.setCustomValidity('กรุณากรอกราคาสินค้า');
                                             }
-                                            // 🌟 1. เช็คเรื่องติดลบหรือเท่ากับ 0 ก่อนเลย
+                                            // . 1. เช็คเรื่องติดลบหรือเท่ากับ 0 ก่อนเลย
                                             else if (priceVal <= 0) {
                                                 e.target.setCustomValidity('ไม่สามารถกำหนดราคาที่ติดลบหรือเท่ากับ 0 ได้');
                                             }
-                                            // 🌟 2. ถ้าไม่ติดลบ ค่อยมาเช็คว่าน้อยกว่าหรือเท่ากับต้นทุนไหม
+                                            // . 2. ถ้าไม่ติดลบ ค่อยมาเช็คว่าน้อยกว่าหรือเท่ากับต้นทุนไหม
                                             else if (priceVal <= costVal) {
                                                 e.target.setCustomValidity('ราคาขายต้องมากกว่าราคาต้นทุน');
                                             }
@@ -791,7 +791,7 @@ function AdminProductPage() {
                                     <div className="border-t border-gray-100 pt-3">
                                         <label className="block text-sm font-bold text-gray-700 mb-1">สาเหตุการแก้ไข <span className="text-red-500">*</span></label>
 
-                                        {/* 🌟 1. Dropdown สาเหตุหลัก */}
+                                        {/* . 1. Dropdown สาเหตุหลัก */}
                                         <select
                                             required
                                             value={formData.ReasonSelect || ''}
@@ -810,7 +810,7 @@ function AdminProductPage() {
                                             <option value="อื่นๆ">อื่นๆ (โปรดระบุเพิ่มเติม)</option>
                                         </select>
 
-                                        {/* 🌟 2. ช่องพิมพ์เพิ่ม จะโชว์ขึ้นมาก็ต่อเมื่อเลือก "อื่นๆ" เท่านั้น */}
+                                        {/* . 2. ช่องพิมพ์เพิ่ม จะโชว์ขึ้นมาก็ต่อเมื่อเลือก "อื่นๆ" เท่านั้น */}
                                         {formData.ReasonSelect === 'อื่นๆ' && (
                                             <div className="mt-3 animate-fade-in-down">
                                                 <textarea
@@ -871,11 +871,11 @@ function AdminProductPage() {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">เพิ่มรูปภาพใหม่ (เลือกพร้อมกันได้หลายรูป)</label>
                                         <input
                                             type="file" multiple accept="image/*"
-                                            onChange={handleFileChange} // 🌟 เปลี่ยนมาใช้ฟังก์ชันใหม่
+                                            onChange={handleFileChange} // . เปลี่ยนมาใช้ฟังก์ชันใหม่
                                             className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-pointer"
                                         />
 
-                                        {/* 🌟 โชว์รูปตัวอย่าง */}
+                                        {/* . โชว์รูปตัวอย่าง */}
                                         {imagePreviews.length > 0 && (
                                             <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3">
                                                 {imagePreviews.map((src, index) => (
@@ -937,7 +937,7 @@ function AdminProductPage() {
                                         <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-2 gap-2">
                                             <label className="block text-sm font-bold text-gray-700">รายละเอียดสินค้า</label>
 
-                                            {/* 🌟 ปุ่มแทรกหัวข้อย่อย */}
+                                            {/* . ปุ่มแทรกหัวข้อย่อย */}
                                             <div className="flex flex-wrap gap-1.5">
                                                 {detailKeywords.map(kw => (
                                                     <button
@@ -1027,7 +1027,7 @@ function AdminProductPage() {
                                                     required
                                                 />
 
-                                                {/* 🌟 โชว์รูปตัวอย่างที่เพิ่งเลือก */}
+                                                {/* . โชว์รูปตัวอย่างที่เพิ่งเลือก */}
                                                 {imagePreviews.length > 0 && (
                                                     <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                                                         {imagePreviews.map((src, index) => (

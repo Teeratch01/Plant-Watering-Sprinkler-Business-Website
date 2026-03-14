@@ -150,6 +150,7 @@ function CheckoutPage() {
         try {
             // เริ่มต้น Transaction
             const generatedOrderNumber = Date.now();
+            const newOrderRef = doc(collection(db, "orders"));
             await runTransaction(db, async (transaction) => {
 
                 // ---------------------------------------------------
@@ -216,7 +217,7 @@ function CheckoutPage() {
                 transaction.set(userRef, userDataToSave, { merge: true });
 
                 // C. สร้าง Order
-                const newOrderRef = doc(collection(db, "orders"));
+                
                 const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0);
                 const subtotal = getCartTotal();
                 const discount = 0;
@@ -225,7 +226,7 @@ function CheckoutPage() {
                 const orderData = {
                     OrderNumber: generatedOrderNumber,
                     UserID: userId,
-                    OrderStatus: "Payment Success",
+                    OrderStatus: paymentMethod === 'qr' ? 'Payment In Progress' : 'Payment Success',
                     TotalQuantity: totalQty,
                     TotalPrice: finalPrice,
                     OrderDate: serverTimestamp(),
@@ -273,6 +274,14 @@ function CheckoutPage() {
             // ).join('\n');
 
             // const fullAddress = `${formData.address} ต.${address.district} อ.${address.amphoe} จ.${address.province} ${address.zipcode}`;
+
+            // let instructionMessage = '';
+            // if (paymentMethod === 'qr') {
+            //     instructionMessage = '⚠️ สำคัญ: เนื่องจากคุณเลือกชำระเงินแบบโอนเงิน (QR Code) คำสั่งซื้อนี้จะสมบูรณ์ก็ต่อเมื่อคุณได้ "อัปโหลดสลิปโอนเงิน" แล้ว กรุณาเข้าสู่ระบบเว็บไซต์ และไปที่เมนู "Orders (ประวัติการสั่งซื้อ)" เพื่อแนบสลิปให้แอดมินตรวจสอบครับ';
+            // } else {
+            //     instructionMessage = '✅ การชำระเงินผ่านบัตรเครดิต/เดบิตของคุณเสร็จสมบูรณ์แล้ว ทางเราได้รับยอดเงินและกำลังดำเนินการเตรียมจัดส่งสินค้าให้คุณโดยเร็วที่สุดครับ';
+            // }
+
             // const templateParams = {
             //     customer_name: `${formData.name} ${formData.surname}`,
             //     customer_email: formData.email, // ต้องสร้างตัวแปรรับอีเมลใน EmailJS เป็น To Email: {{customer_email}}
@@ -280,7 +289,8 @@ function CheckoutPage() {
             //     total_price: finalPrice.toLocaleString(),
             //     payment_method: paymentMethod === 'qr' ? 'โอนเงินผ่าน QR Code' : 'บัตรเครดิต/เดบิต',
             //     order_details: itemsText,
-            //     shipping_address: fullAddress
+            //     shipping_address: fullAddress,
+            //     payment_message: instructionMessage
             // };
 
             // emailjs.send(
@@ -293,11 +303,14 @@ function CheckoutPage() {
             toast.success("สั่งซื้อสินค้าสำเร็จ!");
             setCartItems([]);
             localStorage.removeItem('shopping-cart');
+            
 
             setTimeout(() => {
                 navigate('/order-success', {
                     state: {
                         orderNumber: generatedOrderNumber,
+                        orderId : newOrderRef.id,
+                        paymentMethod: paymentMethod,
                         totalPrice: finalPrice
                     }
                 });

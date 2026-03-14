@@ -4,8 +4,8 @@ import { db } from '../../FirebaseConfig';
 import AdminNavbar from '../../components/Admin/AdminNavbar';
 import { Search, Edit, Users, UserX, MapPin, Phone, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { auth } from '../../FirebaseConfig'; // 🌟 โหลด auth เข้ามา
-import { sendPasswordResetEmail } from 'firebase/auth'; // 🌟 ฟังก์ชันสำหรับส่งอีเมลรีเซ็ตรหัสผ่าน
+import { auth } from '../../FirebaseConfig'; // . โหลด auth เข้ามา
+import { sendPasswordResetEmail } from 'firebase/auth'; // . ฟังก์ชันสำหรับส่งอีเมลรีเซ็ตรหัสผ่าน
 
 import { CreateInput } from "thai-address-autocomplete-react";
 
@@ -189,7 +189,7 @@ function AdminCustomerPage() {
                                 {loading ? (
                                     <tr><td colSpan="4" className="px-6 py-10 text-center text-gray-400">กำลังโหลดข้อมูลลูกค้า...</td></tr>
                                 ) : filteredCustomers.length === 0 ? (
-                                    // 🌟 แจ้งเตือนเมื่อค้นหาไม่พบ (ตาม Use Case 16)
+                                    // . แจ้งเตือนเมื่อค้นหาไม่พบ (ตาม Use Case 16)
                                     <tr>
                                         <td colSpan="4" className="px-6 py-12 text-center">
                                             <UserX size={40} className="mx-auto text-gray-300 mb-3" />
@@ -265,7 +265,7 @@ function AdminCustomerPage() {
                                     <p className="text-sm text-gray-600 font-medium bg-gray-100 px-3 py-1.5 rounded-md">
                                         E-mail: {selectedCustomer?.email}
                                     </p>
-                                    {/* 🌟 ปุ่มส่งอีเมลรีเซ็ตรหัสผ่าน */}
+                                    {/* . ปุ่มส่งอีเมลรีเซ็ตรหัสผ่าน */}
                                     <button
                                         type="button"
                                         onClick={handleSendPasswordReset}
@@ -308,10 +308,10 @@ function AdminCustomerPage() {
                                         <input type="text" value={formData.addressLocation} onChange={e => setFormData({ ...formData, addressLocation: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                                     </div>
 
-                                    {/* 🌟 เปลี่ยนมาใช้ InputThaiAddress 🌟 */}
+                                    {/* . เปลี่ยนมาใช้ InputThaiAddress . */}
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">แขวง / ตำบล</label>
-                                        {/* 🌟 สังเกตว่าเราใช้แค่ admin-address-box ครอบเอาไว้ และข้างในไม่มี className แล้ว */}
+                                        {/* . สังเกตว่าเราใช้แค่ admin-address-box ครอบเอาไว้ และข้างในไม่มี className แล้ว */}
                                         <div className="admin-address-box w-full">
                                             <InputThaiAddress.District
                                                 value={formData.sub_district || ''}

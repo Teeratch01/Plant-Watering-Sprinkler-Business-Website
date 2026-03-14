@@ -57,7 +57,7 @@ function AdminManagementPage() {
             setLoading(false);
         });
 
-        // B: 🌟 ดึงข้อมูลคำขอ (แบ่งตาม Role) 🌟
+        // B: . ดึงข้อมูลคำขอ (แบ่งตาม Role) .
         let qRequests;
         if (currentUser.role === 'adminManager') {
             // Manager: ดึงมาทั้งหมด เพื่อรออนุมัติ
@@ -70,7 +70,7 @@ function AdminManagementPage() {
         const unsubscribeRequests = onSnapshot(qRequests, (snapshot) => {
             const reqData = snapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() }))
-                // 🌟 กรองเอาเฉพาะ Request ที่ "ไม่ได้" ขึ้นต้นด้วยคำว่า 'PRODUCT_' 
+                // . กรองเอาเฉพาะ Request ที่ "ไม่ได้" ขึ้นต้นด้วยคำว่า 'PRODUCT_' 
                 .filter(req => req.type && !req.type.startsWith('PRODUCT_'));
 
             // เรียงจากใหม่ไปเก่า
@@ -270,7 +270,7 @@ function AdminManagementPage() {
                             ${activeTab === 'Pending' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
                     >
                         สถานะคำขอ
-                        {/* 🌟 นับจำนวนเฉพาะรายการที่สถานะเป็น PENDING มาโชว์ที่ Badge */}
+                        {/* . นับจำนวนเฉพาะรายการที่สถานะเป็น PENDING มาโชว์ที่ Badge */}
                         {requests.filter(req => req.status === 'PENDING').length > 0 && (
                             <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full">
                                 {requests.filter(req => req.status === 'PENDING').length}
@@ -384,7 +384,7 @@ function AdminManagementPage() {
                                         </div>
 
                                         <div className="flex gap-2 w-full md:w-auto items-center justify-end">
-                                            {/* 🌟 เงื่อนไข: ถ้าเป็น Manager "และ" สถานะยัง PENDING ถึงจะแสดงปุ่มให้กด */}
+                                            {/* . เงื่อนไข: ถ้าเป็น Manager "และ" สถานะยัง PENDING ถึงจะแสดงปุ่มให้กด */}
                                             {isManager && req.status === 'PENDING' ? (
                                                 <>
                                                     <button
@@ -401,7 +401,7 @@ function AdminManagementPage() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                /* 🌟 ถ้าไม่ใช่ Manager หรือรายการนี้ถูกพิจารณาไปแล้ว ให้แสดงแค่ "ป้ายสถานะ" */
+                                                /* . ถ้าไม่ใช่ Manager หรือรายการนี้ถูกพิจารณาไปแล้ว ให้แสดงแค่ "ป้ายสถานะ" */
                                                 <span className={`text-xs font-bold px-4 py-2 rounded-full border flex items-center gap-1
                                                     ${req.status === 'PENDING' ? 'bg-orange-50 text-orange-600 border-orange-200' :
                                                         req.status === 'APPROVED' ? 'bg-green-50 text-green-600 border-green-200' :

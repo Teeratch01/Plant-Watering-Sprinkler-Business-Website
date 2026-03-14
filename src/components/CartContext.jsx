@@ -22,7 +22,7 @@ export const CartProvider = ({ children }) => {
     }, [cartItems]);
 
     const addToCart = (product, quantity = 1) => {
-        // 🌟 1. เช็คสต็อกก่อนเอาเข้าตะกร้า
+        // . 1. เช็คสต็อกก่อนเอาเข้าตะกร้า
         const existingItem = cartItems.find((item) => item.id === product.id);
         const stock = Number(product.Stock || product.stock || 999);
 
@@ -37,7 +37,7 @@ export const CartProvider = ({ children }) => {
             return;
         }
 
-        // 🌟 2. ถ้าของมีพอ ค่อยสั่งอัปเดตตะกร้า
+        // . 2. ถ้าของมีพอ ค่อยสั่งอัปเดตตะกร้า
         setCartItems((prevItems) => {
             const itemExists = prevItems.find((item) => item.id === product.id);
             if (itemExists) {
