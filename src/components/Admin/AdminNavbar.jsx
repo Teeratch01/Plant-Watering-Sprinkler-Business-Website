@@ -114,12 +114,12 @@ const AdminNavbar = () => {
 
     const adminMenu = [
         {
-            name: 'Home',
+            name: 'หน้าหลัก',
             path: '/admin/dashboard',
             icon: <LayoutDashboard size={18} />
         },
         {
-            name: 'User MGMT',
+            name: 'จัดการผู้ใช้งาน',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
             hasBadge: pendingAdminCount > 0,
@@ -134,7 +134,7 @@ const AdminNavbar = () => {
             ]
         },
         {
-            name: 'Order & Product MGMT',
+            name: 'จัดการคำสั่งซื้อและสินค้า',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
             hasBadge: pendingProductCount > 0 || pendingOrderCount > 0,
@@ -154,7 +154,7 @@ const AdminNavbar = () => {
             ]
         },
         {
-            name: 'Helpdesk',
+            name: 'ศูนย์ช่วยเหลือ',
             path: '#', // ไม่มี path ตรงๆ เพราะเป็น Dropdown
             icon: <ClipboardList size={18} />,
             hasBadge: pendingChatCount > 0 || pendingSupportCount > 0,

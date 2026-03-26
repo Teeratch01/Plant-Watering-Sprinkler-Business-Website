@@ -1,12 +1,12 @@
 import React, { useState, useEffect, use } from 'react';
-import { ShoppingCart, User, LogOut,History,ClipboardClock,UserRoundCog  } from 'lucide-react';
+import { ShoppingCart, User, LogOut, History, ClipboardClock, UserRoundCog } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../FirebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import EditProfileModal from './EditProfileModal';
 import { CreateInput } from "thai-address-autocomplete-react";
-import{ useCart } from './CartContext';
+import { useCart } from './CartContext';
 
 
 // src/components/Navbar.jsx
@@ -19,7 +19,7 @@ const Navbar = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const navigate = useNavigate();
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-    const {getCartCount,setCartItems} = useCart();
+    const { getCartCount, setCartItems } = useCart();
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -54,7 +54,7 @@ const Navbar = () => {
 
             setCartItems([]); // เคลียร์ตะกร้าสินค้าเมื่อ logout
             localStorage.removeItem('shopping-cart'); // เคลียร์ localStorage ด้วย
-            
+
             setIsDropdownOpen(false);
             navigate('/login');
         } catch (error) {
@@ -64,19 +64,19 @@ const Navbar = () => {
 
     const menuItems = [
         {
-            key: 'Home',
+            key: 'หน้าหลัก',
             Linkto: '/'
         },
         {
-            key: 'Product',
+            key: 'สินค้า',
             Linkto: '/products'
         },
         {
-            key: 'Orders',
+            key: 'คำสั่งซื้อ',
             Linkto: '/order-status'
         },
         {
-            key: 'Contact US',
+            key: 'ติดต่อเรา',
             Linkto: '/contact'
         },
     ];
@@ -91,9 +91,9 @@ const Navbar = () => {
 
             <Link to="/">
 
-            <div className="text-4xl font-light tracking-widest text-black">
-                PWSB
-            </div>
+                <div className="text-4xl font-light tracking-widest text-black">
+                    PWSB
+                </div>
 
             </Link>
 
@@ -108,10 +108,7 @@ const Navbar = () => {
                             onClick={() => setActiveMenu(item.key)}
                             className={`
               pb-1 border-b-2 transition-all duration-300 cursor-pointer
-              ${activeMenu === item
-                                    ? 'border-black text-black'       // ถ้าเป็นตัวที่เลือก: เส้นดำ ตัวดำ
-                                    : 'border-transparent text-gray-500 hover:text-black hover:border-gray-300' // ถ้าไม่ใช่: เส้นใส (hover แล้วเส้นเทา)
-                                }
+              ${activeMenu === item.key ? 'border-black text-black' : 'border-transparent text-gray-500 hover:text-black hover:border-gray-300'}
             `}
                         >
                             {item.key}
@@ -127,14 +124,14 @@ const Navbar = () => {
             <div className="flex items-center space-x-6">
 
                 <Link to="/cart">
-                <div className="relative cursor-pointer hover:opacity-70 transition-opacity">
-                    <ShoppingCart size={28} />
-                    {getCartCount() > 0 && (
+                    <div className="relative cursor-pointer hover:opacity-70 transition-opacity">
+                        <ShoppingCart size={28} />
+                        {getCartCount() > 0 && (
                             <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center border-2 border-white">
                                 {getCartCount()}
                             </span>
                         )}
-                </div>
+                    </div>
                 </Link>
 
 
@@ -164,13 +161,13 @@ const Navbar = () => {
                                                 <ClipboardClock size={16} /> ประวัติการสั่งซื้อ
                                             </Link>
                                         </li>
-                                        
+
                                         <li>
                                             <Link onClick={() => setIsEditProfileOpen(true)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                                <UserRoundCog size={16} /> แก้ไขข้อมูล Account
+                                                <UserRoundCog size={16} /> แก้ไขข้อมูลผู้ใช้งาน
                                             </Link>
                                         </li>
-                                        
+
 
                                         <hr className="my-1 border-gray-100" />
 

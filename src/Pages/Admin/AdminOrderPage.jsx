@@ -5,15 +5,16 @@ import AdminNavbar from '../../components/Admin/AdminNavbar';
 import { Search, Package, Clock, CheckCircle, XCircle, Truck, PackageCheck, AlertCircle, Calendar as CalendarIcon, FilterX, Eye, Receipt, Image as ImageIcon, Download } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import emailjs from '@emailjs/browser';
 
 const STATUS_OPTIONS = [
-    'Payment In Progress',
-    'Payment Success',
-    'Prepare Order',
-    'Packaging Complete',
-    'In transit',
-    'Deliver Complete',
-    'Cancelled'
+    { value: 'Payment In Progress', label: 'Payment In Progress (รอชำระเงิน/ตรวจสอบ)' },
+    { value: 'Payment Success', label: 'Payment Success (ชำระเงินสำเร็จ)' },
+    { value: 'Prepare Order', label: 'Prepare Order (กำลังเตรียมสินค้า)' },
+    { value: 'Packaging Complete', label: 'Packaging Complete (บรรจุเรียบร้อย)' },
+    { value: 'In transit', label: 'In transit (อยู่ระหว่างจัดส่ง)' },
+    { value: 'Deliver Complete', label: 'Deliver Complete (จัดส่งสำเร็จ)' },
+    { value: 'Cancelled', label: 'Cancelled (ยกเลิกคำสั่งซื้อ)' }
 ];
 
 const CANCEL_REASONS = [
@@ -40,6 +41,7 @@ function AdminOrderPage() {
 
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+    const [isRejecting, setIsRejecting] = useState(false)
 
     useEffect(() => {
         const q = query(collection(db, "orders"), orderBy("OrderDate", "desc"));
@@ -53,17 +55,17 @@ function AdminOrderPage() {
 
                 // ระบบ Auto-Cancel: เช็คว่าสถานะเป็น Payment In Progress, ยังไม่มีสลิป, และมีวันที่สั่งซื้อ
                 if (data.OrderStatus === 'Payment In Progress' && !data.PaymentSlipUrl && data.OrderDate) {
-                    
+
                     // แปลงวันที่สั่งซื้อให้อยู่ในรูปแบบ Date Object
                     const orderDate = typeof data.OrderDate.toDate === 'function' ? data.OrderDate.toDate() : new Date(data.OrderDate);
-                    
+
                     // คำนวณหาระยะห่างของเวลา (ชั่วโมง)
                     const diffHours = (now - orderDate) / (1000 * 60 * 60);
 
                     // ถ้าเวลาผ่านไปเกิน 24 ชั่วโมง (หรือจะปรับเป็นตัวเลขอื่นก็ได้)
                     if (diffHours >= 24) {
                         const cancelReason = 'ไม่ได้ส่งหลักฐานการยืนยันการชำระเงินในเวลาที่กำหนด (ระบบยกเลิกอัตโนมัติ)';
-                        
+
                         // 1. สั่งอัปเดตไปที่ Firebase ทันทีแบบเงียบๆ (Background Update)
                         updateDoc(doc(db, "orders", id), {
                             OrderStatus: 'Cancelled',
@@ -82,7 +84,7 @@ function AdminOrderPage() {
             setOrders(orderData);
             setLoading(false);
         });
-        
+
         return () => unsubscribe();
     }, []);
 
@@ -222,6 +224,49 @@ function AdminOrderPage() {
         return true;
     });
 
+    const handleRejectSlip = async (order) => {
+        if (!order.CustomerEmail) {
+            toast.error('ไม่สามารถส่งอีเมลได้ เนื่องจากลูกค้าไม่ได้ระบุอีเมลไว้');
+            return;
+        }
+
+        if (!window.confirm('ยืนยันการปฏิเสธสลิปและส่งอีเมลแจ้งลูกค้าให้โอนใหม่?')) return;
+
+        setIsRejecting(true);
+
+        try {
+            // 1. ส่ง Email แจ้งลูกค้าผ่าน EmailJS
+            const templateParams = {
+                email: order.CustomerEmail,
+                name: order.CustomerName || 'ลูกค้า',
+                title: `แจ้งสถานะการชำระเงิน คำสั่งซื้อ #${order.OrderNumber}`,
+                message: `ตรวจสอบพบว่ายอดเงินในสลิปที่คุณแนบมา ไม่ตรงกับยอดสุทธิของคำสั่งซื้อ \n\nยอดสุทธิที่ต้องชำระคือ: ฿${Number(order.TotalPrice).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \n\nคุณสามารถดูสลิปเดิมที่แนบมาผิดได้ที่ลิงก์นี้: ${order.PaymentSlipUrl} \n\nกรุณาทำการโอนเงินให้ถูกต้อง และเข้าสู่ระบบเพื่ออัปโหลดสลิปใหม่ผ่านหน้า "ประวัติการสั่งซื้อ" ของคุณ หรือนำเลขคำสั่งซื้อที่ได้รับผ่านอีเมลนำไปค้นหาในเมนู "คำสั่งซื้อ" เพื่ออัปโหลดสลิปใหม่อีกครั้ง`
+            };
+
+            // ใส่ YOUR_SERVICE_ID, YOUR_TEMPLATE_ID, YOUR_PUBLIC_KEY จากเว็บ EmailJS ของคุณ
+            await emailjs.send(
+                'service_ggjvrgp',     // 1. Service ID
+                'template_6slcuhp',    // 2. Template ID
+                templateParams,
+                'l0FcJmRFJUKMjF1sG'
+            );
+
+            // 2. อัปเดตข้อมูลใน Firebase (เคลียร์ค่า PaymentSlipUrl ให้เป็น null)
+            await updateDoc(doc(db, "orders", order.id), {
+                PaymentSlipUrl: null
+            });
+
+            toast.success('ปฏิเสธสลิปและส่งอีเมลแจ้งลูกค้าเรียบร้อยแล้ว');
+            setViewModal({ isOpen: false, order: null }); // ปิดหน้าต่าง Modal
+
+        } catch (error) {
+            console.error("Error rejecting slip:", error);
+            toast.error('เกิดข้อผิดพลาดในการส่งอีเมล กรุณาลองใหม่อีกครั้ง');
+        } finally {
+            setIsRejecting(false);
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800 flex flex-col">
@@ -359,7 +404,10 @@ function AdminOrderPage() {
                                                 </td>
 
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900">
-                                                    {Number(order.TotalPrice).toLocaleString()}
+                                                    {Number(order.TotalPrice).toLocaleString('th-TH', {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2
+                                                    })}
                                                 </td>
 
                                                 <td className="px-4 py-3 text-center relative">
@@ -370,11 +418,11 @@ function AdminOrderPage() {
                                                                 value={order.OrderStatus || ''}
                                                                 onChange={(e) => handleStatusChange(order.id, e.target.value)}
                                                                 className={`w-full border rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-bold
-                                                                    ${isNeedsApproval ? 'border-orange-400 text-orange-600 bg-orange-50 animate-pulse' : 'border-gray-200 bg-white'}`}
+        ${isNeedsApproval ? 'border-orange-400 text-orange-600 bg-orange-50 animate-pulse' : 'border-gray-200 bg-white'}`}
                                                                 disabled={order.OrderStatus === 'Cancelled'}
                                                             >
-                                                                {STATUS_OPTIONS.map(status => (
-                                                                    <option key={status} value={status}>{status}</option>
+                                                                {STATUS_OPTIONS.map(option => (
+                                                                    <option key={option.value} value={option.value}>{option.label}</option>
                                                                 ))}
                                                             </select>
 
@@ -506,7 +554,10 @@ function AdminOrderPage() {
                                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm text-center">
                                         <p className="text-sm text-gray-500 mb-1 font-bold">ยอดชำระสุทธิ (Total Amount)</p>
                                         <div className="text-3xl font-black text-blue-600 mb-4">
-                                            ฿{(viewModal.order.TotalPrice || 0).toLocaleString()}
+                                            ฿{(viewModal.order.TotalPrice || 0).toLocaleString('th-TH', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}
                                         </div>
 
                                         <div className="border-t border-gray-200 pt-4 flex flex-col items-center gap-2">
@@ -544,15 +595,31 @@ function AdminOrderPage() {
                                                                 </span>
                                                             </div>
                                                         </a>
-                                                        <div className="mt-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                            <span className="text-xs font-bold text-blue-800">ลูกค้ายืนยันการโอนเงินแล้ว</span>
-                                                            <button
-                                                                onClick={() => handleStatusChange(viewModal.order.id, 'Payment Success')}
-                                                                disabled={viewModal.order.OrderStatus !== 'Payment In Progress'}
-                                                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-2 py-1.5 rounded transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                {viewModal.order.OrderStatus === 'Payment Success' ? 'อนุมัติแล้ว' : 'อนุมัติการชำระเงิน'}
-                                                            </button>
+                                                        {/* โค้ดส่วนปุ่มอนุมัติ/ปฏิเสธ สลิปโอนเงิน */}
+                                                        <div className="mt-4 w-full bg-blue-50/80 p-3.5 rounded-xl border border-blue-200 flex flex-col gap-3">
+                                                            {/* ข้อความด้านบน */}
+                                                            <div className="text-center pb-2 border-b border-blue-200/50">
+                                                                <span className="text-xs font-bold text-blue-800">ลูกค้ายืนยันการโอนเงินแล้ว</span>
+                                                            </div>
+
+                                                            {/* ปุ่ม 2 ปุ่มด้านล่าง แบ่งครึ่ง 50/50 */}
+                                                            <div className="flex flex-row gap-2 w-full">
+                                                                <button
+                                                                    onClick={() => handleRejectSlip(viewModal.order)}
+                                                                    disabled={isRejecting || viewModal.order.OrderStatus !== 'Payment In Progress'}
+                                                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white text-[11px] font-bold py-2.5 px-1 rounded-lg transition shadow-sm disabled:opacity-50 flex items-center justify-center text-center"
+                                                                >
+                                                                    {isRejecting ? 'กำลังส่ง Email...' : 'ปฏิเสธ (ยอดไม่ตรง)'}
+                                                                </button>
+
+                                                                <button
+                                                                    onClick={() => handleStatusChange(viewModal.order.id, 'Payment Success')}
+                                                                    disabled={isRejecting || viewModal.order.OrderStatus !== 'Payment In Progress'}
+                                                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold py-2.5 px-1 rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-center"
+                                                                >
+                                                                    {viewModal.order.OrderStatus === 'Payment Success' ? 'อนุมัติแล้ว' : 'อนุมัติชำระเงิน'}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -630,12 +697,18 @@ function AdminOrderPage() {
                                                                 <div className="font-medium text-gray-800 line-clamp-2">{item.ProductName || 'ไม่ทราบชื่อสินค้า'}</div>
                                                                 <div className="text-[10px] text-gray-400 mt-1">ID: {item.ProductID}</div>
                                                             </td>
-                                                            <td className="px-4 py-3 text-center text-gray-600">{(item.Price || 0).toLocaleString()}</td>
+                                                            <td className="px-4 py-3 text-center text-gray-600">{(item.Price || 0).toLocaleString('th-TH', {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2
+                                                            })}</td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <span className="bg-blue-50 text-blue-700 font-bold px-2 py-1 rounded-lg border border-blue-100">{item.Quantity || 1}</span>
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-bold text-gray-800">
-                                                                {((item.Price || 0) * (item.Quantity || 1)).toLocaleString()}
+                                                                {((item.Price || 0) * (item.Quantity || 1)).toLocaleString('th-TH', {
+                                                                    minimumFractionDigits: 2,
+                                                                    maximumFractionDigits: 2
+                                                                })}
                                                             </td>
                                                         </tr>
                                                     ))}

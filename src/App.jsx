@@ -39,24 +39,26 @@ import { doc, getDoc } from 'firebase/firestore';
 function HomePage() {
   // const [count, setCount] = useState(0)
   const navigate = useNavigate();
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   const services = [
     {
       id: 1,
-      title: "Quality Products",
+      title: "สินค้ามีคุณภาพ",
       image: sprinklerimg,
       description: "คัดสรรอุปกรณ์เกรดพรีเมียม อายุการใช้งานยาวนาน รับประกันคุณภาพทุกชิ้น",
       position: "object-bottom"
     },
     {
       id: 2,
-      title: "Fast Delivery",
+      title: "จัดส่งรวดเร็วและปลอดภัย",
       image: deliveryimg,
       description: "บริการจัดส่งสินค้าทั่วประเทศ แพ็คกันกระแทกอย่างดี ถึงมือคุณภายใน 7 วัน",
       position: "object-top"
     },
     {
       id: 3,
-      title: "Expert Support",
+      title: "สนับสนุนลูกค้าด้วยทีมงานมืออาชีพ",
       image: supportimg,
       description: "ทีมงานมืออาชีพพร้อมให้คำปรึกษาและแนะนำการใช้งานอย่างใกล้ชิด",
       position: "object-top"
@@ -66,7 +68,6 @@ function HomePage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-
         try {
           const docRef = doc(db, 'users', user.uid);
           const docSnap = await getDoc(docRef);
@@ -81,11 +82,36 @@ function HomePage() {
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
+        finally {
+          setIsAuthChecking(false);
+        }
+      }
+      else {
+        // 1. ถ้าไม่ได้ล็อคอิน ต้องปิดหน้า Loading ด้วย ไม่งั้นจะค้าง
+        setIsAuthChecking(false);
+
+        // 2. เช็คว่าเพิ่งเปิดเว็บเข้ามาครั้งแรกใน Session นี้หรือไม่
+        const hasVisited = sessionStorage.getItem('hasVisitedInitial');
+        
+        if (!hasVisited) {
+          // ถ้ายังไม่เคยเข้า ให้บันทึกไว้ว่าเข้ามาแล้ว แล้วเด้งไปหน้า Products
+          sessionStorage.setItem('hasVisitedInitial', 'true');
+          navigate('/products', { replace: true }); 
+          // ใช้ replace: true เพื่อไม่ให้การเด้งนี้ไปค้างในประวัติการกด Back ของเบราว์เซอร์
+        }
       }
     });
 
     return () => unsubscribe();
   }, [navigate]);
+
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white text-gray-500 font-sans">
+        กำลังตรวจสอบข้อมูล...
+      </div>
+    );
+  }
 
 
 
@@ -106,7 +132,7 @@ function HomePage() {
           <div className="container mx-auto px-4">
 
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-serif text-gray-900 mb-4">About Us</h2>
+              <h2 className="text-4xl font-serif text-gray-900 mb-4">เกี่ยวกับเรา</h2>
               {/* ขีดเส้นใต้ */}
               <div className="w-24 h-[1px] bg-gray-400 mx-auto mb-8"></div>
 

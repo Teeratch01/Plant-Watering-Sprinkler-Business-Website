@@ -4,7 +4,7 @@ import { db } from '../../FirebaseConfig';
 import AdminNavbar from '../../components/Admin/AdminNavbar';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ReferenceLine,
-    ScatterChart, Scatter, ZAxis, // . เพิ่ม 3 ตัวนี้
+    ScatterChart, Scatter, ZAxis,
     XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 import { TrendingUp, TrendingDown, Package, Map, DollarSign, ShoppingCart, MapPin, Activity, Download } from 'lucide-react';
@@ -26,7 +26,7 @@ const provinceMap = {
     "ขอนแก่น": "Khon Kaen",
     "จันทบุรี": "Chanthaburi",
     "ฉะเชิงเทรา": "Chachoengsao",
-    "ชลบุรี": "Chon Buri", // บางไฟล์ใช้ Chonburi
+    "ชลบุรี": "Chon Buri", 
     "ชัยนาท": "Chai Nat",
     "ชัยภูมิ": "Chaiyaphum",
     "ชุมพร": "Chumphon",
@@ -115,9 +115,21 @@ function AdminDashboard() {
     const [selectedProvince, setSelectedProvince] = useState(null);
 
 
+    // --- ฟังก์ชันจัดฟอร์แมตตัวเลข (ใส่ .00 ให้ยอดขาย) ---
+    const formatValueDisplay = (val, mode = viewMode) => {
+        if (val == null) return "0";
+        if (mode === 'REVENUE') {
+            // ถ้ายอดขาย บังคับแสดงทศนิยม 2 ตำแหน่ง
+            return Number(val).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        // ถ้าจำนวนชิ้น ให้แสดงจำนวนเต็มตามปกติ
+        return Number(val).toLocaleString('th-TH');
+    };
+
+
     const COLORS = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1'];
+    
     useEffect(() => {
-        // ดึงเฉพาะออเดอร์ที่ไม่ถูกยกเลิกมาวิเคราะห์
         const q = query(
             collection(db, "orders"),
             where("OrderStatus", "not-in", ["Cancelled", "Payment In Progress"])
@@ -143,15 +155,13 @@ function AdminDashboard() {
         return () => {
             unsubscribeOrders();
             unsubscribeProducts();
-            unsubscribePayments();// . อย่าลืม clear subscription
+            unsubscribePayments();
         };
     }, []);
 
 
     const filteredOrders = orders.filter(order => {
-
         if (!startDate || !endDate) return true;
-
         let orderDate;
         if (order.OrderDate?.toDate) orderDate = order.OrderDate.toDate();
         else if (order.OrderDate) orderDate = new Date(order.OrderDate);
@@ -166,14 +176,11 @@ function AdminDashboard() {
         }
         if (endDate) {
             const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999); // ให้ครอบคลุมถึงสิ้นวันของ endDate
+            end.setHours(23, 59, 59, 999);
             if (orderDate > end) return false;
         }
         return true;
     });
-
-
-
 
 
     const getMonthlySalesData = () => {
@@ -185,19 +192,18 @@ function AdminDashboard() {
             if (order.OrderDate && typeof order.OrderDate.toDate === 'function') {
                 date = order.OrderDate.toDate();
             } else if (order.OrderDate) {
-                date = new Date(order.OrderDate); // เผื่อกรณีเป็น String
+                date = new Date(order.OrderDate);
             } else {
                 return;
             }
 
             const month = date.getMonth();
             const year = date.getFullYear();
-            // สร้าง Key รูปแบบ YYYY-MM เพื่อให้เรียงลำดับเวลาได้ถูกต้อง
             const sortKey = `${year}-${(month + 1).toString().padStart(2, '0')}`;
 
             if (!sortedData[sortKey]) {
                 sortedData[sortKey] = {
-                    label: `${monthNames[month]} ${(year + 543).toString().slice(-2)}`, // เช่น ก.พ. 69
+                    label: `${monthNames[month]} ${(year + 543).toString().slice(-2)}`,
                     totalRevenue: 0,
                     totalQuantity: 0
                 };
@@ -211,14 +217,11 @@ function AdminDashboard() {
             sortedData[sortKey].totalQuantity += orderQty;
         });
 
-        // แปลงเป็น Array แล้วเรียงตาม Key (เรียงจากเดือนเก่าไปเดือนใหม่)
-
         const sortedKeys = Object.keys(sortedData).sort();
         return sortedKeys.map((key, index) => {
             const currentVal = viewMode === 'REVENUE' ? sortedData[key].totalRevenue : sortedData[key].totalQuantity;
             let growth = 0;
 
-            // . คำนวณ % การเติบโตเทียบกับเดือนก่อนหน้า
             if (index > 0) {
                 const prevKey = sortedKeys[index - 1];
                 const prevVal = viewMode === 'REVENUE' ? sortedData[prevKey].totalRevenue : sortedData[prevKey].totalQuantity;
@@ -226,19 +229,17 @@ function AdminDashboard() {
                 if (prevVal > 0) {
                     growth = ((currentVal - prevVal) / prevVal) * 100;
                 } else if (currentVal > 0) {
-                    growth = 100; // เดือนก่อนขายไม่ได้ เดือนนี้ขายได้ ตีเป็นบวก 100%
+                    growth = 100;
                 }
             }
 
             return {
                 name: sortedData[key].label,
                 value: currentVal,
-                growth: Number(growth.toFixed(1)) // . เก็บค่า % การเติบโตเพื่อเอาไปวาดกราฟเส้น
+                growth: Number(growth.toFixed(1))
             };
         });
     };
-
-
 
     const getTopProducts = () => {
         const productCount = {};
@@ -246,7 +247,6 @@ function AdminDashboard() {
             (order.Items || []).forEach(item => {
                 const name = item.ProductName || 'Unknown';
                 const qty = Number(item.Quantity) || 1;
-                // . คำนวณยอดขายของสินค้านั้นๆ ด้วย
                 const price = Number(item.Price || 0);
                 const revenue = qty * price;
 
@@ -261,10 +261,8 @@ function AdminDashboard() {
         return Object.keys(productCount)
             .map(key => ({
                 name: key,
-                // . สร้างฟิลด์ value ไว้โชว์บนกราฟ
                 value: viewMode === 'REVENUE' ? productCount[key].revenue : productCount[key].qty
             }))
-            // . เรียงตาม value
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
     };
@@ -273,12 +271,10 @@ function AdminDashboard() {
     const getLocationData = () => {
         const locationCount = {};
         filteredOrders.forEach(order => {
-            // ดึงจังหวัดจาก Object Address
             const addr = order.ShippingAddress || order.Address || {};
             const province = addr.Province || addr.province || 'ไม่ระบุ';
 
             const revenue = Number(order.TotalPrice) || 0;
-
             let qty = 0;
 
             if (order.Items && Array.isArray(order.Items)) {
@@ -294,7 +290,6 @@ function AdminDashboard() {
         return Object.keys(locationCount)
             .map(key => ({
                 name: key,
-                // . ส่งค่าออกไปเป็น value ตาม viewMode
                 value: viewMode === 'REVENUE' ? locationCount[key].revenue : locationCount[key].qty
             }))
             .sort((a, b) => b.value - a.value);
@@ -327,32 +322,27 @@ function AdminDashboard() {
                     if (!prodMap[name]) prodMap[name] = 0;
                     prodMap[name] += val;
                 })
-
             }
-
         })
         return {
             categories: Object.keys(catMap).map(k => ({ name: k, value: catMap[k] })).sort((a, b) => b.value - a.value),
-            products: Object.keys(prodMap).map(k => ({ name: k, value: prodMap[k] })).sort((a, b) => b.value - a.value).slice(0, 5) // เอาแค่ Top 5
+            products: Object.keys(prodMap).map(k => ({ name: k, value: prodMap[k] })).sort((a, b) => b.value - a.value).slice(0, 5)
         };
     };
 
     const provinceDetails = getProvinceDetailData(selectedProvince);
 
-
-
     const monthlySales = getMonthlySalesData();
     const topProducts = getTopProducts();
     const locationData = getLocationData();
 
-    const maxLocationValue = Math.max(...locationData.map(d => d.value), 0); // . เปลี่ยนเป็นหาค่ามากสุดจาก d.value
+    const maxLocationValue = Math.max(...locationData.map(d => d.value), 0);
     const colorScale = scaleLinear()
         .domain([0, maxLocationValue === 0 ? 1 : maxLocationValue])
         .range(["#EFF6FF", "#1D4ED8"]);
 
 
     const getProductGrowthData = () => {
-
         if (orders.length === 0) return [];
 
         const dates = orders.map(o => {
@@ -389,7 +379,6 @@ function AdminDashboard() {
                     const qty = Number(item.Quantity) || 1;
                     const revenue = qty * Number(item.Price || 0);
 
-                    // เลือกข้อมูลตามปุ่มที่กด (ยอดขาย หรือ จำนวนชิ้น)
                     const value = viewMode === 'REVENUE' ? revenue : qty;
 
                     if (isCurrent) currentData[name] = (currentData[name] || 0) + value;
@@ -408,17 +397,16 @@ function AdminDashboard() {
             let growth = 0;
 
             if (previous > 0) {
-                // สูตรหาเปอร์เซ็นต์: ((ใหม่ - เก่า) / เก่า) * 100
                 growth = ((current - previous) / previous) * 100;
             } else if (current > 0) {
-                growth = 100; // ถ้าเดือนที่แล้วยอด 0 แต่เดือนนี้ขายได้ ตีเป็นบวก 100%
+                growth = 100;
             }
 
             return {
                 name,
                 current,
                 previous,
-                growth: Number(growth.toFixed(1)) // ปัดทศนิยม 1 ตำแหน่ง
+                growth: Number(growth.toFixed(1))
             };
         });
     };
@@ -428,7 +416,6 @@ function AdminDashboard() {
     const getOverallGrowthKPI = () => {
         if (orders.length === 0) return { revenueGrowth: 0, qtyGrowth: 0, currentRevenue: 0, currentQty: 0 };
 
-        // 1. หาเดือนและปีล่าสุดที่มีข้อมูลในระบบ (ช่วงเวลาปัจจุบัน)
         const dates = orders.map(o => {
             if (o.OrderDate?.toDate) return o.OrderDate.toDate();
             if (o.OrderDate) return new Date(o.OrderDate);
@@ -439,14 +426,12 @@ function AdminDashboard() {
         const currentMonth = latestDate.getMonth();
         const currentYear = latestDate.getFullYear();
 
-        // 2. คำนวณหาเดือนก่อนหน้า (ช่วงเวลาก่อนหน้า)
         const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
         const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
         let currentRevenue = 0; let lastRevenue = 0;
         let currentQty = 0; let lastQty = 0;
 
-        // 3. หา Sum(ยอดขาย) และ Sum(จำนวนขาย) ของทั้ง 2 ช่วงเวลา
         orders.forEach(order => {
             let date;
             if (order.OrderDate?.toDate) date = order.OrderDate.toDate();
@@ -477,7 +462,6 @@ function AdminDashboard() {
             }
         });
 
-        // 4. เข้าสูตรคำนวณเปอร์เซ็นต์: ((ปัจจุบัน - ก่อนหน้า) / ก่อนหน้า) * 100
         const calcGrowth = (current, prev) => {
             if (prev === 0) return current > 0 ? 100 : 0;
             return ((current - prev) / prev) * 100;
@@ -503,19 +487,17 @@ function AdminDashboard() {
 
         filteredOrders.forEach(order => {
             (order.Items || []).forEach(item => {
-                const productId = item.ProductID; // ดึง ProductID จากในออเดอร์
+                const productId = item.ProductID;
                 const qty = Number(item.Quantity) || 1;
                 const price = Number(item.Price || 0);
-                const value = viewMode === 'REVENUE' ? qty * price : qty; // เช็คตามปุ่มที่กด
+                const value = viewMode === 'REVENUE' ? qty * price : qty;
 
-                // . ไปหาข้อมูลสินค้าในตาราง Products เพื่อดู Area และ Plant
                 const productInfo = products.find(p => p.id === productId);
 
                 if (productInfo) {
                     const areas = Array.isArray(productInfo.AreaType) ? productInfo.AreaType : [];
                     const plants = Array.isArray(productInfo.PlantType) ? productInfo.PlantType : [];
 
-                    // จับคู่ไขว้ (Cross Join) พื้นที่และพืชทุกแบบที่สินค้านี้รองรับ
                     areas.forEach(area => {
                         plants.forEach(plant => {
                             const key = `${area}_${plant}`;
@@ -529,7 +511,6 @@ function AdminDashboard() {
             });
         });
 
-        // คืนค่าเป็น Array และกรองเอาเฉพาะจุดที่มียอดขาย > 0
         return Object.values(matrix).filter(d => d.value > 0);
     };
 
@@ -546,7 +527,6 @@ function AdminDashboard() {
                 const price = Number(item.Price || 0);
                 const value = viewMode === 'REVENUE' ? qty * price : qty;
 
-                // ไปหาข้อมูลสินค้าในตาราง Products เพื่อดู ProductCategory
                 const productInfo = products.find(p => p.id === productId);
                 const category = productInfo ? (productInfo.ProductCategory || 'ไม่ระบุ') : 'ไม่ระบุ';
 
@@ -557,7 +537,6 @@ function AdminDashboard() {
             });
         });
 
-        // คืนค่าและเรียงจากมากไปน้อย
         return Object.keys(categoryCount)
             .map(key => ({
                 name: key,
@@ -582,8 +561,8 @@ function AdminDashboard() {
 
         for (const row of dataArray) {
             const values = headers.map(header => {
-                const escaped = ('' + row[header]).replace(/"/g, '""'); // จัดการเครื่องหมายคำพูดที่ซ้อนกัน
-                return `"${escaped}"`; // ครอบด้วย "" ป้องกันลูกน้ำในข้อความทำให้คอลัมน์เพี้ยน
+                const escaped = ('' + row[header]).replace(/"/g, '""'); 
+                return `"${escaped}"`; 
             })
             csvRows.push(values.join(','))
         }
@@ -601,10 +580,8 @@ function AdminDashboard() {
         document.body.removeChild(link);
     }
 
-    //  3.1 ฟังก์ชัน Export Orders (ดึงใหม่ทั้งหมดทุกสถานะ และ ไม่กรองวันที่)
     const exportOrders = async () => {
         try {
-            // 1. ดึงข้อมูล Orders ทั้งหมดจาก Firebase (ไม่สนสถานะ)
             const querySnapshot = await getDocs(collection(db, "orders"));
             const allOrdersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -612,7 +589,6 @@ function AdminDashboard() {
                 return alert("ไม่มีข้อมูลออเดอร์ในระบบ");
             }
 
-            // 2. จัด Format ข้อมูลทั้งหมดเพื่อเตรียมลง CSV ทันที (ไม่ต้องผ่านตัวกรอง)
             const formattedData = allOrdersData.map(order => {
                 const date = order.OrderDate?.toDate ? order.OrderDate.toDate().toLocaleString('th-TH') : order.OrderDate;
                 const itemsStr = (order.Items || []).map(i => `${i.ProductName} (x${i.Quantity})`).join(', ');
@@ -630,7 +606,6 @@ function AdminDashboard() {
                 };
             });
 
-            // 3. สั่งดาวน์โหลด
             downloadCSV(formattedData, 'Orders_Export_All');
 
         } catch (error) {
@@ -639,7 +614,6 @@ function AdminDashboard() {
         }
     };
 
-    //  3.2 ฟังก์ชัน Export Products
     const exportProducts = () => {
         const formattedData = products.map(product => {
             return {
@@ -657,10 +631,8 @@ function AdminDashboard() {
         downloadCSV(formattedData, 'Products_Export');
     };
 
-    //  3.3 ฟังก์ชัน Export Payments
     const exportPayments = () => {
         const formattedData = payments.map(pay => {
-            // แปลงวันที่ (ถ้าเก็บเป็น String ตามในรูป หรือถ้าเป็น Timestamp ก็แปลงได้)
             let date = pay.PaymentDate;
             if (date?.toDate) date = date.toDate().toLocaleString('th-TH');
 
@@ -685,10 +657,10 @@ function AdminDashboard() {
                 <div className="fixed bg-gray-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full mt-[-10px]"
                     style={{ left: tooltipContent.x, top: tooltipContent.y }}>
                     <p className="font-bold text-center">{tooltipContent.name}</p>
-                    {/* . เปลี่ยนข้อความให้สอดคล้องกับมุมมองและเปลี่ยนตัวแปรเป็น .value */}
                     <p className="text-gray-300">
                         {viewMode === 'REVENUE' ? 'ยอดขาย: ฿' : 'จำนวน: '}
-                        {tooltipContent.value?.toLocaleString()}
+                        {/* เรียกใช้ formatValueDisplay ตัวใหม่ */}
+                        {formatValueDisplay(tooltipContent.value)}
                         {viewMode === 'QUANTITY' && ' ชิ้น'}
                     </p>
                 </div>
@@ -717,7 +689,6 @@ function AdminDashboard() {
                         </div>
                     </div>
 
-                    {/* . 4. UI สำหรับเลือกช่วงเวลา */}
                     <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                         <div className="flex flex-col">
                             <span className="text-[10px] text-gray-500 font-bold px-1">ตั้งแต่วันที่</span>
@@ -749,10 +720,6 @@ function AdminDashboard() {
                     </div>
                 </div>
 
-
-
-
-
                 {/* KPI Cards (สรุปภาพรวม) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -761,7 +728,8 @@ function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-gray-500">ยอดขายรวมสุทธิ</p>
-                            <h3 className="text-2xl font-black text-gray-800">฿{totalRevenue.toLocaleString()}</h3>
+                            {/* ดึงยอดขายมาโชว์ ใช้วิธี force format แบบ REVENUE */}
+                            <h3 className="text-2xl font-black text-gray-800">฿{formatValueDisplay(totalRevenue, 'REVENUE')}</h3>
                         </div>
                     </div>
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -770,7 +738,7 @@ function AdminDashboard() {
                         </div>
                         <div>
                             <p className="text-sm font-bold text-gray-500">จำนวนคำสั่งซื้อ</p>
-                            <h3 className="text-2xl font-black text-gray-800">{totalOrders.toLocaleString()} <span className="text-sm font-medium text-gray-400">ออเดอร์</span></h3>
+                            <h3 className="text-2xl font-black text-gray-800">{formatValueDisplay(totalOrders, 'QUANTITY')} <span className="text-sm font-medium text-gray-400">ออเดอร์</span></h3>
                         </div>
                     </div>
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -827,12 +795,9 @@ function AdminDashboard() {
                                     </div>
                                 </div>
 
-
-
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     {/* กราฟแท่ง */}
                                     <div className="h-[350px]">
-                                        {/* . 1. แก้ไขชื่อหัวข้อให้เปลี่ยนตามมุมมองที่เลือก */}
                                         <h3 className="text-sm font-bold text-gray-700 mb-4 text-center">
                                             Top 5 สินค้าขายดี {viewMode === 'REVENUE' ? '(ตามยอดขาย)' : '(ตามจำนวนชิ้น)'}
                                         </h3>
@@ -846,21 +811,15 @@ function AdminDashboard() {
                                                     textAnchor="end"
                                                     height={90}
                                                     tickFormatter={(name) => name.length > 15 ? `${name.substring(0, 15)}...` : name} />
-
-                                                {/* . 2. เพิ่ม Format แกน Y ให้แสดงเป็นจำนวนเงินหรือจำนวนชิ้นให้ถูกต้อง */}
                                                 <YAxis
                                                     allowDecimals={false}
                                                     tickFormatter={(val) => viewMode === 'REVENUE' ? `฿${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}` : val}
                                                 />
-
-                                                {/* . 3. อัปเดต Tooltip ให้แสดงคำว่า 'ยอดขาย' หรือ 'จำนวนชิ้น' ตอนเอาเมาส์ชี้ */}
                                                 <RechartsTooltip
                                                     cursor={{ fill: 'transparent' }}
                                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']}
+                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
                                                 />
-
-                                                {/* . 4. เปลี่ยน dataKey ตรงนี้จาก "จำนวนชิ้น" เป็น "value" */}
                                                 <Bar dataKey="value" fill="#4E79A7" radius={[4, 4, 0, 0]} barSize={40} />
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -868,7 +827,7 @@ function AdminDashboard() {
 
                                     {/* กราฟโดนัท */}
                                     <div className="h-[350px]">
-                                        <h3 className="text-sm font-bold text-gray-700 mb-4 text-center">สัดส่วนยอดขายแบ่งตามจังหวัด (บาท)</h3>
+                                        <h3 className="text-sm font-bold text-gray-700 mb-4 text-center">สัดส่วน{viewMode === 'REVENUE' ? 'ยอดขาย (บาท)' : 'จำนวน (ชิ้น)'}แบ่งตามจังหวัด</h3>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie data={locationData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={2} dataKey="value">
@@ -876,7 +835,10 @@ function AdminDashboard() {
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
-                                                <RechartsTooltip formatter={(value) => `฿${value.toLocaleString()}`} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                                <RechartsTooltip 
+                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
+                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                                                />
                                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -888,14 +850,11 @@ function AdminDashboard() {
 
                         {/* TAB 2: Products */}
                         {activeTab === 'products' && (
-                            <div className="space-y-6"> {/* . เอา <div className="space-y-6"> มาครอบตรงนี้แทน */}
-
+                            <div className="space-y-6">
 
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
 
-                                    {/* KPI Cards (สอดคล้องกับตารางตัวชี้วัดเป๊ะๆ) */}
                                     <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
-                                        {/* 1. Sale Amount Growth (%) */}
                                         <div className="bg-white px-5 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 flex-1">
                                             <div className={`p-2.5 rounded-full ${growthKPIs.revenueGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                                 {growthKPIs.revenueGrowth >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
@@ -911,7 +870,6 @@ function AdminDashboard() {
                                             </div>
                                         </div>
 
-                                        {/* 2. Sales Quantity Growth (%) */}
                                         <div className="bg-white px-5 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 flex-1">
                                             <div className={`p-2.5 rounded-full ${growthKPIs.qtyGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                                 {growthKPIs.qtyGrowth >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
@@ -928,7 +886,6 @@ function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* ปุ่มสลับมุมมอง */}
                                     <div className="bg-gray-200/80 p-1 rounded-lg inline-flex w-full sm:w-auto mt-2 xl:mt-0">
                                         <button
                                             onClick={() => setViewMode('REVENUE')}
@@ -945,28 +902,8 @@ function AdminDashboard() {
                                     </div>
                                 </div>
 
-                                {/* . ปุ่มสลับมุมมอง */}
-                                {/* <div className="flex justify-end">
-                                    <div className="bg-gray-100 p-1 rounded-lg inline-flex">
-                                        <button
-                                            onClick={() => setViewMode('REVENUE')}
-                                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'REVENUE' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >
-                                            ยอดขาย (บาท)
-                                        </button>
-                                        <button
-                                            onClick={() => setViewMode('QUANTITY')}
-                                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'QUANTITY' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                        >
-                                            จำนวน (ชิ้น)
-                                        </button>
-                                    </div>
-                                </div> */}
-
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    {/* กราฟแท่ง */}
                                     <div className="h-[350px]">
-                                        {/* . เปลี่ยนข้อความให้เปลี่ยนตามมุมมอง */}
                                         <h3 className="text-sm font-bold text-gray-700 mb-4 text-center">
                                             Top 5 สินค้าขายดี {viewMode === 'REVENUE' ? '(ตามยอดขาย)' : '(ตามจำนวนชิ้น)'}
                                         </h3>
@@ -989,7 +926,6 @@ function AdminDashboard() {
                                                     axisLine={false}
                                                     tickLine={false}
                                                     tick={{ fontSize: 12, fill: '#6b7280', dx: -10 }}
-                                                    // . จัด Format ตัวเลขแกน Y ให้สวยงาม
                                                     tickFormatter={(val) => viewMode === 'REVENUE' ? `฿${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}` : val}
                                                     width={50}
                                                     domain={[0, 'auto']}
@@ -997,19 +933,15 @@ function AdminDashboard() {
                                                 <RechartsTooltip
                                                     cursor={{ fill: '#f9fafb' }}
                                                     contentStyle={{ borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                                    // . จัด Format ใน Tooltip
-                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']}
+                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
                                                 />
-                                                {/* . เปลี่ยน dataKey เป็น 'value' เพื่อรองรับ 2 มุมมอง */}
                                                 <Bar dataKey="value" fill="#4E79A7" radius={[4, 4, 0, 0]} barSize={40} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    {/* กราฟเส้น */}
                                     <div className="h-[400px]">
                                         <div className="h-[350px] w-full">
-                                            {/* . เปลี่ยนข้อความให้เปลี่ยนตามมุมมอง */}
                                             <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center justify-center gap-2">
                                                 <TrendingUp size={16} className="text-blue-600" />
                                                 แนวโน้ม{viewMode === 'REVENUE' ? 'ยอดขาย' : 'จำนวนสินค้าที่ขายได้'}รายเดือน
@@ -1018,19 +950,14 @@ function AdminDashboard() {
                                                 <LineChart data={monthlySales} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                                     <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} />
-
-                                                    {/* . จัด Format แกน Y */}
                                                     <YAxis
                                                         tickFormatter={(val) => viewMode === 'REVENUE' ? `฿${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}` : val}
                                                         tick={{ fontSize: 12, fill: '#6b7280' }}
                                                     />
-
-                                                    {/* . จัด Format ใน Tooltip */}
                                                     <RechartsTooltip
-                                                        formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']}
+                                                        formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
                                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                                     />
-                                                    {/* . เปลี่ยน dataKey เป็น 'value' */}
                                                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 8, fill: '#2563eb' }} dot={{ fill: '#3b82f6', strokeWidth: 2 }} />
                                                 </LineChart>
                                             </ResponsiveContainer>
@@ -1040,7 +967,6 @@ function AdminDashboard() {
 
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-8">
 
-                                    {/* กราฟแท่ง: การเติบโตรายสินค้า (อันเดิมที่คุณเพิ่มไป) */}
                                     <div className="h-[400px] bg-gray-50/50 p-6 rounded-xl border border-gray-100">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <TrendingUp size={16} className="text-emerald-600" />
@@ -1057,7 +983,8 @@ function AdminDashboard() {
                                                     formatter={(val, name, props) => {
                                                         if (name === 'growth') {
                                                             const { current, previous } = props.payload;
-                                                            const formatValue = (v) => viewMode === 'REVENUE' ? `฿${v.toLocaleString()}` : `${v.toLocaleString()} ชิ้น`;
+                                                            // เปลี่ยนไปเรียกใช้ formatValueDisplay ตัวใหม่
+                                                            const formatValue = (v) => viewMode === 'REVENUE' ? `฿${formatValueDisplay(v)}` : `${formatValueDisplay(v)} ชิ้น`;
                                                             return [
                                                                 <div className="flex flex-col gap-1">
                                                                     <span className={val >= 0 ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'}>
@@ -1082,14 +1009,12 @@ function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
 
-                                    {/* . กราฟเส้น: แนวโน้มอัตราการเติบโตรายเดือน (อันใหม่) . */}
                                     <div className="h-[400px] bg-gray-50/50 p-6 rounded-xl border border-gray-100">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <Activity size={16} className="text-purple-600" />
                                             กราฟเส้นแสดง % การเติบโตรายเดือน (เดือนล่าสุด เทียบ เดือนก่อน)
                                         </h3>
                                         <ResponsiveContainer width="100%" height="100%">
-                                            {/* ใช้ข้อมูล monthlySales เพราะเรายัด growth เข้าไปแล้ว */}
                                             <LineChart data={monthlySales} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
@@ -1104,7 +1029,6 @@ function AdminDashboard() {
                                                         return [val, name];
                                                     }}
                                                 />
-                                                {/* . เส้นอ้างอิง 0% เพื่อให้ดูง่ายว่าเดือนไหนโตขึ้น เดือนไหนยอดตก */}
                                                 <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={2} />
 
                                                 <Line
@@ -1123,7 +1047,6 @@ function AdminDashboard() {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
-                                    {/* กราฟโดนัท: สัดส่วนยอดขายแบ่งตามหมวดหมู่สินค้า (ใหม่) */}
                                     <div className="h-[450px] bg-gray-50/50 p-6 rounded-xl border border-gray-100 col-span-1">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <Package size={16} className="text-orange-600" />
@@ -1134,17 +1057,12 @@ function AdminDashboard() {
                                                 <Pie
                                                     data={categoryData}
                                                     cx="50%" cy="50%"
-                                                    // . 1. ลดขนาดรัศมีวงกลมลง เพื่อให้มีระยะขอบ (Margin) สำหรับวาดตัวหนังสือ
                                                     innerRadius={55}
                                                     outerRadius={80}
                                                     paddingAngle={2}
                                                     dataKey="value"
-                                                    // . 2. ปรับแต่งตัวหนังสือ (ย่อคำ + ลดขนาดฟอนต์)
                                                     labelLine={(props) => {
-                                                        // ถ้าน้อยกว่าหรือเท่ากับ 5% ให้ return null (ซ่อนเส้น)
                                                         if (props.percent <= 0.05) return null;
-
-                                                        // ถ้ามากกว่า 5% ให้วาดเส้นตามพิกัด (points) ที่ Recharts คำนวณให้
                                                         return (
                                                             <polyline
                                                                 points={props.points.map(p => `${p.x},${p.y}`).join(' ')}
@@ -1153,12 +1071,9 @@ function AdminDashboard() {
                                                                 fill="none"
                                                             />
                                                         );
-                                                    }} // เพิ่มเส้นโยงให้ดูง่ายขึ้น
+                                                    }} 
                                                     label={({ name, percent }) => {
-
-                                                        if (percent <= 0.05) return null; // ซ่อนสัดส่วนที่น้อยกว่า 5%
-
-                                                        // ย่อชื่อหมวดหมู่ที่ยาวเกินไปให้อ่านง่ายขึ้น
+                                                        if (percent <= 0.05) return null; 
                                                         let shortName = name;
                                                         if (name === 'Controller&Timer') shortName = 'Controller';
                                                         if (name === 'SolenoidValve') shortName = 'Valve';
@@ -1166,14 +1081,14 @@ function AdminDashboard() {
 
                                                         return `${shortName} ${(percent * 100).toFixed(0)}%`;
                                                     }}
-                                                    style={{ fontSize: '11px', fontWeight: '500' }} // เล็กลงนิดนึงจะได้ไม่ชนกัน
+                                                    style={{ fontSize: '11px', fontWeight: '500' }} 
                                                 >
                                                     {categoryData.map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
                                                 <RechartsTooltip
-                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']}
+                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
                                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                                 />
                                                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
@@ -1181,7 +1096,6 @@ function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
 
-                                    {/* กราฟ Bubble Matrix (อันเดิม ขยับมาเป็น 2 คอลัมน์) */}
                                     <div className="h-[450px] bg-gray-50/50 p-6 rounded-xl border border-gray-100 lg:col-span-2">
                                         <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <Map size={16} className="text-blue-600" />
@@ -1222,7 +1136,7 @@ function AdminDashboard() {
                                                                     <p className="font-bold text-gray-800 text-sm mb-1">{data.area} <span className="text-gray-400 font-normal">x</span> {data.plant}</p>
                                                                     <p className="text-xs font-bold text-emerald-600">
                                                                         {viewMode === 'REVENUE' ? 'ยอดขายรวม: ฿' : 'จำนวนรวม: '}
-                                                                        {data.value.toLocaleString()} {viewMode === 'QUANTITY' && 'ชิ้น'}
+                                                                        {formatValueDisplay(data.value)} {viewMode === 'QUANTITY' && 'ชิ้น'}
                                                                     </p>
                                                                 </div>
                                                             );
@@ -1235,10 +1149,9 @@ function AdminDashboard() {
                                                         const maxValue = Math.max(...scatterData.map(d => d.value), 1);
                                                         const ratio = Math.min(entry.value / maxValue, 1);
 
-                                                        // . แก้ไขสีกราฟขวา: ใช้กลุ่มสีโทนเขียวไล่ระดับแทนโทนฟ้า
-                                                        const lightColor = "#bbfadd"; // เขียวอ่อนมาก (Emerald 50)
-                                                        const midColor = "#10B981";   // เขียวหลัก (Emerald 500)
-                                                        const darkColor = "#047857";  // เขียวเข้ม (Emerald 700)
+                                                        const lightColor = "#bbfadd"; 
+                                                        const midColor = "#10B981";   
+                                                        const darkColor = "#047857";  
 
                                                         let bubbleColor = lightColor;
                                                         if (ratio > 0.3) bubbleColor = midColor;
@@ -1254,15 +1167,12 @@ function AdminDashboard() {
                                 </div>
 
                             </div>
-
-
                         )}
 
                         {/* TAB 3: Locations */}
                         {activeTab === 'locations' && (
-                            <div className="space-y-6"> {/* . เพิ่มกล่องครอบแบบเดียวกับ Products */}
+                            <div className="space-y-6">
 
-                                {/* . ปุ่มสลับมุมมอง */}
                                 <div className="flex justify-end">
                                     <div className="bg-gray-100 p-1 rounded-lg inline-flex">
                                         <button
@@ -1282,26 +1192,22 @@ function AdminDashboard() {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center h-[450px]">
 
-                                    {/* ฝั่งซ้าย: สัดส่วนยอดขาย */}
                                     <div className="w-full h-full">
                                         <h3 className="text-sm font-bold text-gray-700 mb-4 text-center bg-gray-50 py-2 rounded-lg border border-gray-100">
                                             Top 6 จังหวัดที่มียอด{viewMode === 'REVENUE' ? 'ขายสูงสุด' : 'สั่งซื้อเยอะที่สุด'}
                                         </h3>
                                         <ResponsiveContainer width="100%" height="85%">
                                             <PieChart>
-                                                {/* . เปลี่ยน dataKey เป็น "value" และใส่ slice(0,6) ตรงนี้แทนเพื่อให้กราฟโชว์แค่ 6 อันดับ */}
                                                 <Pie data={locationData.slice(0, 6)} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                                                     {locationData.slice(0, 6).map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
-                                                {/* . อัปเดต Tooltip วงกลมให้เปลี่ยนตามมุมมอง */}
-                                                <RechartsTooltip formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']} />
+                                                <RechartsTooltip formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    {/* . ฝั่งขวา: แผนที่ประเทศไทย */}
                                     <div className="w-full h-full border-l border-gray-100 pl-8 relative">
                                         <h3 className="text-sm font-bold text-gray-700 mb-2 text-center bg-gray-50 py-2 rounded-lg border border-gray-100">
                                             การกระจายตัวของ{viewMode === 'REVENUE' ? 'ยอดขาย' : 'จำนวนชิ้น'}ทั่วประเทศ
@@ -1334,7 +1240,6 @@ function AdminDashboard() {
                                                                     return false;
                                                                 });
 
-                                                                // . ดึงค่า mapValue มาจาก provinceData.value
                                                                 const mapValue = provinceData ? provinceData.value : 0;
 
                                                                 let displayProvinceName = geoProvinceName;
@@ -1354,9 +1259,8 @@ function AdminDashboard() {
                                                                         strokeWidth={0.5}
                                                                         className="outline-none hover:opacity-80 transition-opacity cursor-pointer"
 
-                                                                        // . 3. เพิ่ม onClick เพื่อเซ็ตค่าจังหวัด
                                                                         onClick={() => {
-                                                                            if (mapValue > 0) { // กดดูได้เฉพาะจังหวัดที่มียอด
+                                                                            if (mapValue > 0) { 
                                                                                 setSelectedProvince(displayProvinceName);
                                                                             }
                                                                         }}
@@ -1407,7 +1311,6 @@ function AdminDashboard() {
                                         </div>
 
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[300px]">
-                                            {/* กราฟโดนัท: หมวดหมู่สินค้าที่ขายได้ในจังหวัดนี้ */}
                                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                                 <h4 className="text-xs font-bold text-gray-500 text-center mb-2">หมวดหมู่สินค้ายอดนิยม</h4>
                                                 <ResponsiveContainer width="100%" height="90%">
@@ -1417,13 +1320,12 @@ function AdminDashboard() {
                                                             cx="50%" cy="50%"
                                                             innerRadius={40} outerRadius={70}
                                                             paddingAngle={2} dataKey="value"
-                                                            // . เพิ่มเส้นโยงและ % เหมือนกราฟหน้า Products
                                                             labelLine={(props) => {
                                                                 if (props.percent <= 0.05) return null;
                                                                 return <polyline points={props.points.map(p => `${p.x},${p.y}`).join(' ')} stroke="#9ca3af" strokeWidth={1} fill="none" />;
                                                             }}
                                                             label={({ name, percent }) => {
-                                                                if (percent <= 0.05) return null; // ซ่อนถ้าน้อยกว่า 5%
+                                                                if (percent <= 0.05) return null; 
                                                                 let shortName = name;
                                                                 if (name === 'Controller&Timer') shortName = 'Controller';
                                                                 if (name === 'SolenoidValve') shortName = 'Valve';
@@ -1436,32 +1338,29 @@ function AdminDashboard() {
                                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                             ))}
                                                         </Pie>
-                                                        <RechartsTooltip formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']} />
+                                                        <RechartsTooltip formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']} />
                                                         <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px' }} />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                             </div>
 
-                                            {/* กราฟแท่ง: สินค้าเฉพาะเจาะจงที่ขายได้ในจังหวัดนี้ */}
                                             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full">
                                                 <h4 className="text-xs font-bold text-gray-500 text-center mb-2">Top 5 สินค้าที่ขายดีที่สุด</h4>
                                                 <ResponsiveContainer width="100%" height="90%">
-                                                    {/*  เพิ่ม margin right เป็น 60 เพื่อไม่ให้ตัวเลขที่ยื่นออกมาโดนตัดขอบ */}
                                                     <BarChart data={provinceDetails.products} layout="vertical" margin={{ top: 5, right: 60, left: 0, bottom: 5 }}>
                                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                                                         <XAxis type="number" hide />
                                                         <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(name) => name.length > 15 ? `${name.substring(0, 15)}...` : name} />
                                                         <RechartsTooltip 
                                                             cursor={{ fill: '#f9fafb' }}
-                                                            formatter={(val) => viewMode === 'REVENUE' ? [`฿${val.toLocaleString()}`, 'ยอดขาย'] : [val.toLocaleString(), 'จำนวนชิ้น']}
+                                                            formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
                                                             contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
                                                         />
                                                         <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} barSize={20}>
-                                                            {/* . เพิ่มตัวเลขกำกับไว้ที่ปลายแท่ง (ขวามือ) */}
                                                             <LabelList 
                                                                 dataKey="value" 
                                                                 position="right" 
-                                                                formatter={(val) => viewMode === 'REVENUE' ? `฿${val.toLocaleString()}` : `${val.toLocaleString()} ชิ้น`}
+                                                                formatter={(val) => viewMode === 'REVENUE' ? `฿${formatValueDisplay(val)}` : `${formatValueDisplay(val)} ชิ้น`}
                                                                 style={{ fontSize: '10px', fill: '#6b7280', fontWeight: 'bold' }}
                                                             />
                                                         </Bar>

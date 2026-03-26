@@ -82,7 +82,10 @@ const AddToCartModal = ({ product, isOpen, onClose }) => {
                         />
                     </div>
                     <h4 className="text-lg font-bold text-gray-800 text-center mb-1">{product.ProductName}</h4>
-                    <p className="text-red-600 font-bold text-xl mb-4">฿ {Number(product.Price).toLocaleString()}</p>
+                    <p className="text-red-600 font-bold text-xl mb-4">฿ {Number(product.Price).toLocaleString('th-TH', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}</p>
 
                     {/* Quantity Selector */}
                     <div className="flex items-center gap-4 mb-2">

@@ -62,7 +62,10 @@ function CartPage() {
                                         {/* Price (Mobile: Hidden label, Desktop: shown) */}
                                         <div className="w-full md:w-32 flex justify-between md:justify-center items-center">
                                             <span className="md:hidden text-gray-500 text-sm">ราคาต่อชิ้น:</span>
-                                            <span className="font-medium text-gray-700">฿{Number(item.Price).toLocaleString()}</span>
+                                            <span className="font-medium text-gray-700">฿{Number(item.Price).toLocaleString('th-TH', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}</span>
                                         </div>
 
                                         {/* Quantity Control (Clean Style) */}
@@ -91,7 +94,10 @@ function CartPage() {
                                         <div className="w-full md:w-32 flex justify-between md:justify-center items-center">
                                             <span className="md:hidden text-gray-500 text-sm">รวม:</span>
                                             <span className="text-lg font-bold text-blue-600">
-                                                ฿{Number(item.Price * item.quantity).toLocaleString()}
+                                                ฿{Number(item.Price * item.quantity).toLocaleString('th-TH', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                })}
                                             </span>
                                         </div>
 
@@ -118,7 +124,10 @@ function CartPage() {
                             <div className="space-y-4 mb-6">
                                 <div className="flex justify-between text-gray-600">
                                     <span>ยอดรวมสินค้า</span>
-                                    <span>฿{getCartTotal().toLocaleString()}</span>
+                                    <span>฿{getCartTotal().toLocaleString('th-TH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })}</span>
                                 </div>
                                 <div className="flex justify-between text-gray-600">
                                     <span>ค่าจัดส่ง</span>
@@ -128,7 +137,10 @@ function CartPage() {
                                 <div className="border-t border-gray-100 pt-4 mt-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-gray-800">ยอดสุทธิ</span>
-                                        <span className="text-2xl font-bold text-blue-600">฿{getCartTotal().toLocaleString()}</span>
+                                        <span className="text-2xl font-bold text-blue-600">฿{getCartTotal().toLocaleString('th-TH', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        })}</span>
                                     </div>
                                     <p className="text-xs text-gray-400 text-right mt-1">(ราคารวมภาษีมูลค่าเพิ่มแล้ว)</p>
                                 </div>

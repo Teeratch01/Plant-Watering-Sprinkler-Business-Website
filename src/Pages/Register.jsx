@@ -81,22 +81,22 @@ function Register() {
         createdAt: new Date()
       });
 
-      // const customMessage = "สวัสดีคุณ " + formData.name + "\n\nขอบคุณที่สมัครสมาชิกกับเรา! เรารู้สึกยินดีเป็นอย่างยิ่งที่ได้ต้อนรับคุณเข้าสู่ครอบครัวของเรา.\n\nหากคุณมีคำถามหรือข้อสงสัยใด ๆ เกี่ยวกับการใช้งานเว็บไซต์หรือบริการของเรา โปรดอย่าลังเลที่จะติดต่อทีมสนับสนุนของเรา เรายินดีที่จะช่วยเหลือคุณทุกขั้นตอน.\n\nขอให้คุณมีประสบการณ์ที่ยอดเยี่ยมกับเรา!\n\nขอบคุณอีกครั้งสำหรับการสมัครสมาชิก!\n";
-      // const titleMessage = "ยินดีต้อนรับสู่ PWSB คุณ "+ formData.name;
-      // //ใช้สำหรับส่งอีเมลยืนยันการสมัครสมาชิกผ่าน emailjs (ต้องตั้งค่าใน emailjs ก่อนถึงจะใช้ได้)
-      // const templateParams = {
-      //   name: formData.name,       // ดึงชื่อจากฟอร์มที่ลูกค้ากรอก
-      //   email: formData.email,    // ดึงอีเมลจากฟอร์มที่ลูกค้ากรอก
-      //   title: titleMessage,
-      //   message: customMessage
-      // };
+      const customMessage = "สวัสดีคุณ " + formData.name + "\n\nขอบคุณที่สมัครสมาชิกกับเรา! เรารู้สึกยินดีเป็นอย่างยิ่งที่ได้ต้อนรับคุณเข้าสู่ครอบครัวของเรา.\n\nหากคุณมีคำถามหรือข้อสงสัยใด ๆ เกี่ยวกับการใช้งานเว็บไซต์หรือบริการของเรา โปรดอย่าลังเลที่จะติดต่อทีมสนับสนุนของเรา เรายินดีที่จะช่วยเหลือคุณทุกขั้นตอน.\n\nขอให้คุณมีประสบการณ์ที่ยอดเยี่ยมกับเรา!\n\nขอบคุณอีกครั้งสำหรับการสมัครสมาชิก!\n";
+      const titleMessage = "ยินดีต้อนรับสู่ PWSB คุณ "+ formData.name;
+      //ใช้สำหรับส่งอีเมลยืนยันการสมัครสมาชิกผ่าน emailjs (ต้องตั้งค่าใน emailjs ก่อนถึงจะใช้ได้)
+      const templateParams = {
+        name: formData.name,       // ดึงชื่อจากฟอร์มที่ลูกค้ากรอก
+        email: formData.email,    // ดึงอีเมลจากฟอร์มที่ลูกค้ากรอก
+        title: titleMessage,
+        message: customMessage
+      };
 
-      // await emailjs.send(
-      //   'service_ggjvrgp',     // 1. Service ID
-      //   'template_6slcuhp',    // 2. Template ID
-      //   templateParams,
-      //   'l0FcJmRFJUKMjF1sG'      // 3. Public Key
-      // );
+      await emailjs.send(
+        'service_ggjvrgp',     // 1. Service ID
+        'template_6slcuhp',    // 2. Template ID
+        templateParams,
+        'l0FcJmRFJUKMjF1sG'      // 3. Public Key
+      );
 
 
       toast.success("สมัครสมาชิกสำเร็จ !");

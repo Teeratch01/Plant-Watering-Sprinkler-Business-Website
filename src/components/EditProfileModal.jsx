@@ -248,14 +248,14 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                             className={`w-full flex items-center px-4 py-3 rounded-xl transition-all font-medium text-sm
                                 ${activeTab === 'general' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
-                            <User size={18} className="mr-3" /> General
+                            <User size={18} className="mr-3" /> ข้อมูลผู้ใช้งาน
                         </button>
                         <button
                             onClick={() => setActiveTab('security')}
                             className={`w-full flex items-center px-4 py-3 rounded-xl transition-all font-medium text-sm
                                 ${activeTab === 'security' ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
-                            <Lock size={18} className="mr-3" /> Security
+                            <Lock size={18} className="mr-3" /> ข้อมูลความปลอดภัย
                         </button>
                     </nav>
                 </aside>
@@ -265,7 +265,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
 
                     <div className="flex justify-between items-center p-6 border-b bg-white sticky top-0 z-10">
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                            {activeTab === 'general' ? 'ข้อมูลผู้ใช้งาน' : 'เปลี่ยน Password'}
+                            {activeTab === 'general' ? 'ข้อมูลผู้ใช้งาน' : 'เปลี่ยนรหัสผ่าน'}
                         </h2>
                         <button
                             onClick={onClose}
@@ -408,7 +408,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password ปัจจุบัน</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">รหัสผ่านปัจจุบัน</label>
                                             <input
                                                 type="password"
                                                 value={passData.oldPass}
@@ -419,7 +419,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Password ใหม่</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">รหัสผ่านใหม่</label>
                                             <input
                                                 type="password"
                                                 value={passData.newPass}
@@ -429,7 +429,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password ใหม่</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">ยืนยันรหัสผ่านใหม่</label>
                                             <input
                                                 type="password"
                                                 value={passData.confirmPass}
@@ -449,7 +449,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                                                 onClick={handleChangePasswordInit}
                                                 className="flex items-center px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-lg transition-all"
                                             >
-                                                แก้ไข Password
+                                                แก้ไขรหัสผ่าน
                                             </button>
                                         </div>
                                     </div>

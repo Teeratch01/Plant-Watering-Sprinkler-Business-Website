@@ -12,7 +12,7 @@ const CountdownTimer = ({ orderDate, onExpire }) => {
 
     useEffect(() => {
         if (!orderDate) return;
-        
+
         const dateObj = typeof orderDate.toDate === 'function' ? orderDate.toDate() : new Date(orderDate);
         const targetTime = dateObj.getTime() + (24 * 60 * 60 * 1000); // 24 ชม.
 
@@ -49,7 +49,7 @@ const CountdownTimer = ({ orderDate, onExpire }) => {
 const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus }) => {
     const navigate = useNavigate();
     const [isExpired, setIsExpired] = useState(false);
-    
+
     const needsSlip = order.OrderStatus === 'Payment In Progress' && !order.PaymentSlipUrl;
 
     return (
@@ -75,7 +75,7 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
                             {getStatusIcon(order)}
                             {getDisplayStatus(order)}
                         </span>
-                        
+
                         {/* แสดงเวลานับถอยหลังข้างๆ สถานะ */}
                         {needsSlip && (
                             <CountdownTimer orderDate={order.OrderDate} onExpire={() => setIsExpired(true)} />
@@ -99,7 +99,10 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
                             })}
                         </div>
                         <div className="font-bold text-gray-900 text-base">
-                            ฿ {Number(order.TotalPrice).toLocaleString()}
+                            ฿ {Number(order.TotalPrice).toLocaleString('th-TH', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })}
                         </div>
                     </div>
                 </div>
@@ -123,8 +126,8 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
                     }}
                     className={`w-full md:w-auto px-6 py-3 font-semibold rounded-lg transition flex items-center justify-center gap-2 
                         ${needsSlip
-                            ? (isExpired 
-                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            ? (isExpired
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 : 'bg-orange-500 hover:bg-orange-600 text-white shadow-md animate-pulse')
                             : 'bg-[#F3F4F6] hover:bg-gray-200 text-gray-700'}`}
                 >
@@ -189,9 +192,18 @@ function OrderHistoryPage() {
     // . 1. ฟังก์ชันเลือกข้อความแสดงสถานะ (เช็คเรื่องสลิปที่นี่)
     const getDisplayStatus = (order) => {
         if (order.OrderStatus === 'Payment In Progress') {
-            return order.PaymentSlipUrl ? 'Pending payment approve' : 'Pending payment confirmation';
+            return order.PaymentSlipUrl ? 'รอตรวจสอบสลิปโอนเงิน' : 'รออัปโหลดสลิป';
         }
-        return order.OrderStatus;
+
+        switch (order.OrderStatus) {
+            case 'Payment Success': return 'ชำระเงินสำเร็จ';
+            case 'Prepare Order': return 'กำลังเตรียมสินค้า';
+            case 'Packaging Complete': return 'บรรจุสินค้าเรียบร้อย';
+            case 'In transit': return 'อยู่ระหว่างจัดส่ง';
+            case 'Deliver Complete': return 'จัดส่งสำเร็จ';
+            case 'Cancelled': return 'ยกเลิกคำสั่งซื้อ';
+            default: return order.OrderStatus;
+        }
     };
 
     // . 2. ฟังก์ชันเลือกสีป้ายสถานะ (เปลี่ยนมารับค่า order ทั้งก้อน)
@@ -243,7 +255,7 @@ function OrderHistoryPage() {
     }
 
 
-  return (
+    return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
             <Navbar />
 
@@ -293,9 +305,9 @@ function OrderHistoryPage() {
                         </div>
                     ) : (
                         displayedOrders.map((order) => (
-                            <OrderCardItem 
-                                key={order.id} 
-                                order={order} 
+                            <OrderCardItem
+                                key={order.id}
+                                order={order}
                                 getStatusColor={getStatusColor}
                                 getStatusIcon={getStatusIcon}
                                 getDisplayStatus={getDisplayStatus}

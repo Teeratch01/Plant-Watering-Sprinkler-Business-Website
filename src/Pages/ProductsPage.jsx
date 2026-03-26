@@ -324,7 +324,7 @@ function ProductsPage() {
             </div>
 
             {!hasSearched && selectedCategory !== "All" && (
-                <CategoryKnowledgeBanner category={selectedCategory} />
+              <CategoryKnowledgeBanner category={selectedCategory} />
             )}
 
             {loading ? (
@@ -369,7 +369,10 @@ function ProductsPage() {
 
                         <div className="mt-auto">
                           <p className="text-m font-bold text-red-600 text-center mb-3 line-clamp-1">
-                            ฿ {Number(product.Price).toLocaleString()}
+                            ฿ {Number(product.Price).toLocaleString('th-TH', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
                           </p>
 
                           {/* Price Button (Capsule Style เหมือนรูป) */}
@@ -381,7 +384,7 @@ function ProductsPage() {
                               e.stopPropagation();
                               openModal(product);
                             }}>
-                            Add to Cart
+                            หยิบสินค้าใส่ตะกร้า
                           </button>
                         </div>
 
@@ -406,11 +409,11 @@ function ProductsPage() {
       </div>
 
       <AddToCartModal
-            isOpen={isModalOpen}
-            onClose={closeModal}
-            product={selectedProduct}
-        />
-      
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        product={selectedProduct}
+      />
+
     </div>
   );
 

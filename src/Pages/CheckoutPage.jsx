@@ -217,7 +217,7 @@ function CheckoutPage() {
                 transaction.set(userRef, userDataToSave, { merge: true });
 
                 // C. สร้าง Order
-                
+
                 const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0);
                 const subtotal = getCartTotal();
                 const discount = 0;
@@ -231,7 +231,7 @@ function CheckoutPage() {
                     TotalPrice: finalPrice,
                     OrderDate: serverTimestamp(),
 
-                    CustomerName : `${formData.name} ${formData.surname}`,
+                    CustomerName: `${formData.name} ${formData.surname}`,
                     CustomerEmail: formData.email,
                     CustomerPhone: formData.phone,
 
@@ -269,47 +269,50 @@ function CheckoutPage() {
 
 
             // Email Sent Section
-            // const itemsText = cartItems.map(item => 
-            //     `- ${item.ProductName} (จำนวน: ${item.quantity} ชิ้น) : ${(item.Price * item.quantity).toLocaleString()} บาท`
-            // ).join('\n');
+            const itemsText = cartItems.map(item =>
+                `- ${item.ProductName} (จำนวน: ${item.quantity} ชิ้น) : ${(item.Price * item.quantity).toLocaleString('th-TH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })} บาท`
+            ).join('\n');
 
-            // const fullAddress = `${formData.address} ต.${address.district} อ.${address.amphoe} จ.${address.province} ${address.zipcode}`;
+            const fullAddress = `${formData.address} ต.${address.district} อ.${address.amphoe} จ.${address.province} ${address.zipcode}`;
 
-            // let instructionMessage = '';
-            // if (paymentMethod === 'qr') {
-            //     instructionMessage = '⚠️ สำคัญ: เนื่องจากคุณเลือกชำระเงินแบบโอนเงิน (QR Code) คำสั่งซื้อนี้จะสมบูรณ์ก็ต่อเมื่อคุณได้ "อัปโหลดสลิปโอนเงิน" แล้ว กรุณาเข้าสู่ระบบเว็บไซต์ และไปที่เมนู "Orders (ประวัติการสั่งซื้อ)" เพื่อแนบสลิปให้แอดมินตรวจสอบครับ';
-            // } else {
-            //     instructionMessage = '✅ การชำระเงินผ่านบัตรเครดิต/เดบิตของคุณเสร็จสมบูรณ์แล้ว ทางเราได้รับยอดเงินและกำลังดำเนินการเตรียมจัดส่งสินค้าให้คุณโดยเร็วที่สุดครับ';
-            // }
+            let instructionMessage = '';
+            if (paymentMethod === 'qr') {
+                instructionMessage = '⚠️ สำคัญ: เนื่องจากคุณเลือกชำระเงินแบบโอนเงิน (QR Code) คำสั่งซื้อนี้จะสมบูรณ์ก็ต่อเมื่อคุณได้ "อัปโหลดสลิปโอนเงิน" แล้ว กรุณาเข้าสู่ระบบเว็บไซต์ และไปที่เมนู "Orders (ประวัติการสั่งซื้อ)" เพื่อแนบสลิปให้แอดมินตรวจสอบครับ';
+            } else {
+                instructionMessage = '✅ การชำระเงินผ่านบัตรเครดิต/เดบิตของคุณเสร็จสมบูรณ์แล้ว ทางเราได้รับยอดเงินและกำลังดำเนินการเตรียมจัดส่งสินค้าให้คุณโดยเร็วที่สุดครับ';
+            }
 
-            // const templateParams = {
-            //     customer_name: `${formData.name} ${formData.surname}`,
-            //     customer_email: formData.email, // ต้องสร้างตัวแปรรับอีเมลใน EmailJS เป็น To Email: {{customer_email}}
-            //     order_number: generatedOrderNumber,
-            //     total_price: finalPrice.toLocaleString(),
-            //     payment_method: paymentMethod === 'qr' ? 'โอนเงินผ่าน QR Code' : 'บัตรเครดิต/เดบิต',
-            //     order_details: itemsText,
-            //     shipping_address: fullAddress,
-            //     payment_message: instructionMessage
-            // };
+            const templateParams = {
+                customer_name: `${formData.name} ${formData.surname}`,
+                customer_email: formData.email, // ต้องสร้างตัวแปรรับอีเมลใน EmailJS เป็น To Email: {{customer_email}}
+                order_number: generatedOrderNumber,
+                total_price: finalPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                payment_method: paymentMethod === 'qr' ? 'โอนเงินผ่าน QR Code' : 'บัตรเครดิต/เดบิต',
+                order_details: itemsText,
+                shipping_address: fullAddress,
+                payment_message: instructionMessage
+            };
 
-            // emailjs.send(
-            //     'service_ggjvrgp', 
-            //     'template_ba6dokd', // ใช้ Template ID ของ Order Confirmation
-            //     templateParams, 
-            //     'l0FcJmRFJUKMjF1sG'
-            // ).catch((err) => console.error("EmailJS Error:", err));
+            emailjs.send(
+                'service_ggjvrgp',
+                'template_ba6dokd', // ใช้ Template ID ของ Order Confirmation
+                templateParams,
+                'l0FcJmRFJUKMjF1sG'
+            ).catch((err) => console.error("EmailJS Error:", err));
 
             toast.success("สั่งซื้อสินค้าสำเร็จ!");
             setCartItems([]);
             localStorage.removeItem('shopping-cart');
-            
+
 
             setTimeout(() => {
                 navigate('/order-success', {
                     state: {
                         orderNumber: generatedOrderNumber,
-                        orderId : newOrderRef.id,
+                        orderId: newOrderRef.id,
                         paymentMethod: paymentMethod,
                         totalPrice: finalPrice
                     }
@@ -426,8 +429,8 @@ function CheckoutPage() {
                                         type="text" name="email" placeholder="xxxxxxxx@xxxx.xx"
                                         disabled={!isEditing || user}  // ถ้ามี user จะไม่ให้แก้ไข email
                                         className={`w-full px-4 py-3 border rounded-lg outline-none transition 
-                                            ${(!isEditing || user) 
-                                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' 
+                                            ${(!isEditing || user)
+                                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200'
                                                 : 'bg-gray-50 border-gray-200 focus:ring-2 focus:ring-blue-500'}`}
                                         value={formData.email} onChange={handleInputChange}
                                     />
@@ -635,7 +638,10 @@ function CheckoutPage() {
                                             <p className="text-xs text-gray-500 mt-1">จำนวน: {item.quantity}</p>
                                         </div>
                                         <div className="text-sm font-bold text-gray-700">
-                                            {Number(item.Price * item.quantity).toLocaleString()}
+                                            {Number(item.Price * item.quantity).toLocaleString('th-TH', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}
                                         </div>
                                     </div>
                                 ))}
@@ -644,17 +650,26 @@ function CheckoutPage() {
                             {/* Price Breakdown */}
                             <div className="border-t border-gray-100 pt-4 space-y-3">
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Price :</span>
-                                    <span>{subtotal.toLocaleString()} THB</span>
+                                    <span>ราคารวมทั้งหมด :</span>
+                                    <span>{subtotal.toLocaleString('th-TH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })} บาท</span>
                                 </div>
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Discount :</span>
-                                    <span>{discount.toLocaleString()} THB</span>
+                                    <span>ส่วนลด :</span>
+                                    <span>{discount.toLocaleString('th-TH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })} บาท</span>
                                 </div>
 
                                 <div className="border-t-2 border-gray-200 pt-4 mt-2 flex justify-between items-center">
-                                    <span className="text-lg font-bold text-gray-900">Final Price :</span>
-                                    <span className="text-xl font-bold text-gray-900">{finalPrice.toLocaleString()} THB</span>
+                                    <span className="text-base font-bold text-gray-900">ราคาสุทธิที่ต้องชำระ :</span>
+                                    <span className="text-xl font-bold text-gray-900">{finalPrice.toLocaleString('th-TH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })} บาท</span>
                                 </div>
                             </div>
 

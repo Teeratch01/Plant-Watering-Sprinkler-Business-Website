@@ -11,7 +11,7 @@ function OrderSuccessPage() {
 
     const location = useLocation();
     const navigate = useNavigate();
-    const { orderNumber, orderId, paymentMethod, totalPrice} = location.state || {};
+    const { orderNumber, orderId, paymentMethod, totalPrice } = location.state || {};
 
     const [slipFile, setSlipFile] = useState(null);
     const [slipPreview, setSlipPreview] = useState(null);
@@ -71,14 +71,14 @@ function OrderSuccessPage() {
             <div className="container mx-auto px-4 py-16 flex flex-col items-center">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 decoration-4 decoration-gray-300 underline underline-offset-8">
-                        {paymentMethod === 'qr' && !isUploaded 
-                            ? 'รอการยืนยันการชำระเงิน' 
+                        {paymentMethod === 'qr' && !isUploaded
+                            ? 'รอการยืนยันการชำระเงิน'
                             : 'ขอบคุณสำหรับการสั่งซื้อ'}
                     </h1>
                 </div>
 
                 <div className="bg-white p-8 md:p-12 rounded-xl shadow-sm border border-gray-200 max-w-lg w-full text-center animate-fade-in-up">
-                    
+
                     {/* 🌟 4. เช็คว่าถ้าจ่ายด้วย QR และยังไม่ได้อัปโหลดสลิป ให้โชว์หน้าอัปโหลด */}
                     {paymentMethod === 'qr' && !isUploaded ? (
                         <>
@@ -90,15 +90,18 @@ function OrderSuccessPage() {
                             {totalPrice && (
                                 <div className="bg-blue-50 border border-blue-100 rounded-lg py-3 px-4 mb-4 inline-block">
                                     <p className="text-gray-600 text-sm">ยอดที่ต้องชำระ</p>
-                                    <p className="text-2xl font-black text-blue-600">฿{Number(totalPrice).toLocaleString()}</p>
+                                    <p className="text-2xl font-black text-blue-600">฿{Number(totalPrice).toLocaleString('th-TH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    })}</p>
                                 </div>
                             )}
                             <p className="text-gray-500 mb-6">กรุณาแนบสลิปโอนเงิน เพื่อให้ผู้ดูแลระบบตรวจสอบและยืนยันคำสั่งซื้อของคุณภายใน 24 ชั่วโมงหลังจากดำเนินการสั่งซื้อ</p>
-                            
+
                             {/* กล่องอัปโหลด */}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 mb-6 bg-gray-50 relative hover:bg-gray-100 transition">
-                                <input 
-                                    type="file" 
+                                <input
+                                    type="file"
                                     accept="image/*"
                                     onChange={handleFileChange}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -116,7 +119,7 @@ function OrderSuccessPage() {
                                 )}
                             </div>
 
-                            <button 
+                            <button
                                 onClick={handleUploadSlip}
                                 disabled={isUploading || !slipFile}
                                 className="w-full mb-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white py-3 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition"
@@ -134,8 +137,8 @@ function OrderSuccessPage() {
                                 {isUploaded ? 'ส่งสลิปสำเร็จ!' : 'สั่งซื้อสำเร็จ!'}
                             </h2>
                             <p className="text-gray-500 mb-6">
-                                {isUploaded 
-                                    ? 'ทางเรากำลังตรวจสอบสลิปโอนเงินของคุณ และจะดำเนินการในลำดับถัดไป' 
+                                {isUploaded
+                                    ? 'ทางเรากำลังตรวจสอบสลิปโอนเงินของคุณ และจะดำเนินการในลำดับถัดไป'
                                     : 'เราได้รับคำสั่งซื้อของคุณเรียบร้อยแล้ว กำลังเตรียมจัดส่งสินค้า'}
                             </p>
                         </>
@@ -150,13 +153,13 @@ function OrderSuccessPage() {
                     )}
 
                     <div className="flex flex-col gap-3">
-                        <button 
+                        <button
                             onClick={() => navigate('/products')}
                             className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5 active:scale-95"
                         >
                             <ShoppingBag size={20} /> เลือกซื้อสินค้าต่อ
                         </button>
-                        <button 
+                        <button
                             onClick={() => navigate('/')}
                             className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition"
                         >

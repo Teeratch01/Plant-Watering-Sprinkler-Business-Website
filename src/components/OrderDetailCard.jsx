@@ -79,18 +79,18 @@ const OrderDetailCard = ({ order, payment }) => {
     const currentLevel = order ? getStatusLevel(order.OrderStatus) : 0;
 
     const steps = [
-        { label: 'Payment', icon: <ShoppingCart size={24} /> },
-        { label: 'Prepare Order', icon: <ClipboardList size={24} /> },
-        { label: 'Packaging Completed', icon: <Package size={24} /> },
-        { label: 'In Transit', icon: <Truck size={24} /> },
-        { label: 'Deliver Complete', icon: <PackageCheck size={24} /> },
+        { label: 'ชำระเงิน', icon: <ShoppingCart size={24} /> },
+        { label: 'เตรียมสินค้า', icon: <ClipboardList size={24} /> },
+        { label: 'บรรจุเรียบร้อย', icon: <Package size={24} /> },
+        { label: 'กำลังจัดส่ง', icon: <Truck size={24} /> },
+        { label: 'จัดส่งสำเร็จ', icon: <PackageCheck size={24} /> },
     ];
 
     if (!order) {
         return null;
     }
 
-   return (<div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up">
+    return (<div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in-up">
 
         {/* --- Header: Order Number --- */}
         <div className="p-8 border-b border-gray-100 flex flex-col md:flex-row justify-between md:items-center gap-4">
@@ -144,7 +144,7 @@ const OrderDetailCard = ({ order, payment }) => {
             <div className="p-8 md:p-10 overflow-x-auto bg-gray-50/50 border-b border-gray-100">
                 <div className="flex items-center justify-between min-w-[600px]">
                     {steps.map((step, index) => {
-                        const isStepCompleted = index < currentLevel || (index === 0 && !isPaymentInProgress && !isCancelled);
+                        const isStepCompleted = index <= currentLevel && !isPaymentInProgress && !isCancelled;
 
                         let circleClass = 'bg-gray-100 border-gray-200 text-gray-400';
                         let textColor = 'text-gray-400';
@@ -256,8 +256,14 @@ const OrderDetailCard = ({ order, payment }) => {
                             <p className="text-gray-500 text-xs mt-1">รหัสสินค้า: {item.ProductID}</p>
                         </div>
                         <div className="text-right">
-                            <p className="font-bold text-gray-900">{Number(item.Price * item.Quantity).toLocaleString()}</p>
-                            <p className="text-xs text-gray-400">({Number(item.Price).toLocaleString()} / ชิ้น)</p>
+                            <p className="font-bold text-gray-900">{Number(item.Price * item.Quantity).toLocaleString('th-TH', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })}</p>
+                            <p className="text-xs text-gray-400">({Number(item.Price).toLocaleString('th-TH', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            })} / ชิ้น)</p>
                         </div>
                     </div>
                 ))}
@@ -292,7 +298,10 @@ const OrderDetailCard = ({ order, payment }) => {
                 <div className="flex justify-between items-center text-xl font-bold text-gray-900 border-t border-gray-200 pt-4">
                     <span>ยอดสุทธิ :</span>
                     <span className={isCancelled ? 'text-gray-400 line-through' : 'text-green-600'}>
-                        {Number(order.TotalPrice).toLocaleString()} ฿
+                        {Number(order.TotalPrice).toLocaleString('th-TH', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })} ฿
                     </span>
                 </div>
 
@@ -316,13 +325,12 @@ const OrderDetailCard = ({ order, payment }) => {
                                 finalPrice: order.TotalPrice
                             }
                         })}
-                        className={`w-full mt-3 font-bold py-3 rounded-lg transition text-sm shadow-md flex items-center justify-center gap-2 ${
-                            isExpired 
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        className={`w-full mt-3 font-bold py-3 rounded-lg transition text-sm shadow-md flex items-center justify-center gap-2 ${isExpired
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-orange-500 hover:bg-orange-600 text-white animate-pulse'
-                        }`}
+                            }`}
                     >
-                        {isExpired ? <XCircle size={18} /> : <Upload size={18} />} 
+                        {isExpired ? <XCircle size={18} /> : <Upload size={18} />}
                         {isExpired ? 'หมดเวลาอัปโหลดสลิป' : 'อัปโหลดสลิปโอนเงิน'}
                     </button>
                 )}

@@ -37,10 +37,15 @@ function AdminProductPage() {
     const [imageFiles, setImageFiles] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [existingImages, setExistingImages] = useState([]); // สำหรับเก็บ URL ของรูปภาพเดิมเมื่อแก้ไขข้อมูล
+    const [existingImages, setExistingImages] = useState([]);
 
     const areaOptions = ["สวนหน้าบ้าน/จัดสวน", "สวนเกษตรขนาดใหญ่", "โรงเรือนเพาะชำ", "ไร่พืช/สวนผลไม้", "สนามหญ้า/สนามฟุตบอล"];
     const plantOptions = ["ไม้ดอก/ไม้ประดับ", "ผักสวนครัว", "สนามหญ้า", "ไม้ผล (ทุเรียน/เงาะ)", "พืชไร่ (ข้าวโพด/อ้อย)"];
+
+    // --- ฟังก์ชันจัด Format ราคาให้มี .00 เสมอ ---
+    const formatPriceDisplay = (price) => {
+        return Number(price || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
 
     // ==========================================
     // 1. ตรวจสอบสถานะ User และ Role
@@ -73,25 +78,23 @@ function AdminProductPage() {
     }, []);
 
     // ==========================================
-    // 3. ดึงข้อมูลคำขออนุมัติ (ดึงเฉพาะตอนที่เป็น Manager) . จุดที่แก้ปัญหา .
+    // 3. ดึงข้อมูลคำขออนุมัติ
     // ==========================================
     useEffect(() => {
-        // รอให้ระบบเช็คจนแน่ใจก่อนว่า currentUser เป็น Manager จริงๆ ถึงจะเริ่มดึงข้อมูล
         if (currentUser?.role === 'adminManager') {
             const q = query(collection(db, 'admin_requests'), where('status', '==', 'PENDING'));
             const unsubscribeRequests = onSnapshot(q, (snapshot) => {
-                // ใส่ Console log เพื่อความชัวร์ว่าข้อมูลเข้า
                 console.log("พบรายการรออนุมัติ: ", snapshot.docs.length, " รายการ");
-                setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(req => req.type && req.type.startsWith('PRODUCT_'))); // กรองเฉพาะคำขอที่เกี่ยวกับสินค้า
+                setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(req => req.type && req.type.startsWith('PRODUCT_')));
             }, (error) => {
                 console.error("เกิดข้อผิดพลาดในการดึงข้อมูล Request: ", error);
             });
 
             return () => unsubscribeRequests();
         } else {
-            setRequests([]); // ถ้าไม่ใช่ Manager ให้เคลียร์ค่าทิ้ง
+            setRequests([]);
         }
-    }, [currentUser]); // ทำงานใหม่ทุกครั้งที่ currentUser เปลี่ยนแปลง
+    }, [currentUser]);
 
     // ==========================================
     // 4. จัดการการคลิกพื้นที่ว่างเพื่อปิด Dropdown
@@ -121,7 +124,7 @@ function AdminProductPage() {
                 Pressure: product.Pressure || 'Low',
                 Stock: product.Stock || 0,
                 ReasonSelect: '',
-                ReasonDetail: '', // สำหรับกรณีขอแก้ไขสต็อก
+                ReasonDetail: '',
                 YoutubeURL: product.YoutubeURL || '',
                 ProductStatus: product.ProductStatus || 'Active',
                 AreaType: Array.isArray(product.AreaType) ? product.AreaType : [],
@@ -153,11 +156,7 @@ function AdminProductPage() {
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
         setImageFiles(files);
-
-        // เคลียร์ URL เดิมออกจากหน่วยความจำ
         imagePreviews.forEach(url => URL.revokeObjectURL(url));
-
-        // สร้าง URL ชั่วคราวเพื่อให้เบราว์เซอร์โชว์รูปได้ทันที
         const previews = files.map(file => URL.createObjectURL(file));
         setImagePreviews(previews);
     };
@@ -173,7 +172,6 @@ function AdminProductPage() {
             imageUrls.push(url);
         }
         return imageUrls;
-
     }
 
     const handleSubmit = async (e) => {
@@ -182,7 +180,6 @@ function AdminProductPage() {
         const { type, selectedProduct } = modalState;
 
         try {
-
             if (type === 'INFO') {
                 const updateData = {
                     ProductName: formData.ProductName,
@@ -190,14 +187,9 @@ function AdminProductPage() {
                     ProductCategory: formData.ProductCategory,
                     YoutubeURL: formData.YoutubeURL,
                     Pressure: formData.Pressure,
-                    AreaType: formData.AreaType, // . ส่ง Array เข้าไปตรงๆ
+                    AreaType: formData.AreaType,
                     PlantType: formData.PlantType,
                 }
-
-                // if (imageFiles.length > 0) {
-                //     updateData.ProductPic = await handleUploadImages(formData.ProductName);
-                // }
-
                 await updateDoc(doc(db, 'products', selectedProduct.id), updateData);
                 toast.success('แก้ไขข้อมูลสินค้าสำเร็จ');
                 closeModal();
@@ -205,16 +197,11 @@ function AdminProductPage() {
                 return;
             }
             if (type === 'IMAGE') {
-                // 1. อัปโหลดรูปใหม่ (ถ้ามีเลือกไว้)
                 let newUploadedUrls = [];
                 if (imageFiles.length > 0) {
                     newUploadedUrls = await handleUploadImages(selectedProduct.id);
                 }
-
-                // 2. นำรูปเดิมที่เหลืออยู่ มาต่อกับรูปใหม่ที่เพิ่งอัปโหลด
                 const finalImages = [...existingImages, ...newUploadedUrls];
-
-                // 3. อัปเดตลง Firestore
                 await updateDoc(doc(db, "products", selectedProduct.id), { ProductPic: finalImages });
                 toast.success('อัปเดตรูปภาพสินค้าสำเร็จ');
                 closeModal();
@@ -236,13 +223,11 @@ function AdminProductPage() {
                     CostPrice: Number(formData.CostPrice),
                     Price: Number(formData.Price),
                     Stock: Number(formData.Stock),
-                    AreaType: formData.AreaType, // ส่ง Array ตรงๆ
-                    PlantType: formData.PlantType, // ส่ง Array ตรงๆ
+                    AreaType: formData.AreaType,
+                    PlantType: formData.PlantType,
                     ProductPic: uploadedPicUrls
                 };
             }
-
-            // --- Use Case 11: แก้ไขราคา ---
             else if (type === 'PRICE') {
                 actionText = 'แก้ไขราคา';
                 requestData = {
@@ -250,17 +235,14 @@ function AdminProductPage() {
                     OldPrice: Number(selectedProduct.Price)
                 };
             }
-            // --- Use Case 12: แก้ไขจำนวน (Stock) ---
             else if (type === 'STOCK') {
                 actionText = 'แก้ไขจำนวนสินค้า';
                 const finalReason = formData.ReasonSelect === 'อื่นๆ' ? formData.ReasonDetail : formData.ReasonSelect;
-
                 requestData = {
                     Stock: Number(formData.Stock),
-                    Reason: finalReason // . ส่งค่าที่จัดระเบียบแล้วเข้าไป
+                    Reason: finalReason
                 };
             }
-            // --- Use Case 13: แก้ไขสถานะสินค้า ---
             else if (type === 'STATUS') {
                 actionText = 'แก้ไขสถานะสินค้า';
                 requestData = { ProductStatus: formData.ProductStatus };
@@ -271,10 +253,7 @@ function AdminProductPage() {
                     await setDoc(newProductRef, requestData);
                 }
                 else if (type === 'STOCK') {
-                    // 1. อัปเดตเฉพาะค่า Stock ลงในคลังสินค้าหลัก
                     await updateDoc(doc(db, 'products', selectedProduct.id), { Stock: requestData.Stock });
-
-                    // 2. สร้าง Transaction แยกเก็บประวัติ
                     await addDoc(collection(db, "stock_transactions"), {
                         productId: selectedProduct.id,
                         productName: formData.ProductName,
@@ -283,7 +262,7 @@ function AdminProductPage() {
                         reason: requestData.Reason,
                         actionBy: currentUser.uid,
                         actionByName: `${currentUser.firstname} ${currentUser.surname || ''}`,
-                        actionType: 'DIRECT_EDIT', // ระบุว่า Manager แก้ไขเอง
+                        actionType: 'DIRECT_EDIT',
                         createdAt: serverTimestamp()
                     });
                 }
@@ -298,7 +277,7 @@ function AdminProductPage() {
                 toast.success(`${actionText} สำเร็จ`);
             } else {
                 await addDoc(collection(db, "admin_requests"), {
-                    type: `PRODUCT_${type}`, // PRODUCT_ADD, PRODUCT_PRICE, etc.
+                    type: `PRODUCT_${type}`,
                     targetProductId: targetProductId,
                     targetProductName: formData.ProductName,
                     data: requestData,
@@ -332,17 +311,17 @@ function AdminProductPage() {
         const stockB = Number(b.Stock || 0);
 
         const getStockPriority = (stock) => {
-            if (stock === 0) return 0; // ของหมด
-            if (stock < 5) return 1; // ของเหลือน้อย
-            return 2; // ของปกติ
+            if (stock === 0) return 0;
+            if (stock < 5) return 1;
+            return 2;
         };
 
         const priorityA = getStockPriority(stockA);
         const priorityB = getStockPriority(stockB);
 
         if (priorityA !== priorityB) {
-            return priorityA - priorityB; // เรียงตามลำดับความสำคัญของ Stock
-        } 
+            return priorityA - priorityB;
+        }
 
         return a.ProductName?.localeCompare(b.ProductName || '') || 0;
     });
@@ -366,26 +345,21 @@ function AdminProductPage() {
             else if (request.type === 'PRODUCT_STOCK') {
                 const originalProduct = products.find(p => p.id === request.targetProductId);
 
-                // 1. อัปเดตสต็อกสินค้าหลัก
                 await updateDoc(doc(db, 'products', request.targetProductId), { Stock: request.data.Stock });
-
-                // 2. บันทึกประวัติการอนุมัติ
                 await addDoc(collection(db, "stock_transactions"), {
                     productId: request.targetProductId,
                     productName: request.targetProductName,
                     oldStock: originalProduct?.Stock || 0,
                     newStock: request.data.Stock,
                     reason: request.data.Reason,
-                    actionBy: currentUser.uid, // Manager ผู้อนุมัติ
+                    actionBy: currentUser.uid,
                     actionByName: `${currentUser.firstname} ${currentUser.surname || ''}`,
-                    requestedBy: request.requestedByName, // Employee ผู้ร้องขอ
+                    requestedBy: request.requestedByName,
                     actionType: 'APPROVED_REQUEST',
                     createdAt: serverTimestamp()
                 });
             }
-
             else if (request.type === 'PRODUCT_PRICE') {
-                // สั่งให้เอาค่า NewPrice ในคำขอ ไปอัปเดตใส่ฟิลด์ Price ของสินค้า
                 await updateDoc(doc(db, 'products', request.targetProductId), {
                     Price: request.data.NewPrice
                 });
@@ -428,8 +402,9 @@ function AdminProductPage() {
             case 'PRODUCT_PRICE':
                 return (
                     <div className="flex items-center gap-2">
-                        <span className="text-gray-400 line-through">฿{originalProduct?.Price?.toLocaleString() || '-'}</span>
-                        <span className="text-green-600 font-bold">➔ ฿{req.data.NewPrice?.toLocaleString()}</span>
+                        {/* ใช้ฟังก์ชัน formatPriceDisplay ตรงนี้ */}
+                        <span className="text-gray-400 line-through">฿{formatPriceDisplay(originalProduct?.Price)}</span>
+                        <span className="text-green-600 font-bold">➔ ฿{formatPriceDisplay(req.data.NewPrice)}</span>
                     </div>
                 );
             case 'PRODUCT_STOCK':
@@ -456,7 +431,8 @@ function AdminProductPage() {
             case 'PRODUCT_ADD':
                 return (
                     <div className="text-emerald-600 text-xs font-semibold">
-                        เพิ่มสินค้าใหม่ (ราคา: ฿{req.data.Price?.toLocaleString()} | สต็อก: {req.data.Stock})
+                        {/* ใช้ฟังก์ชัน formatPriceDisplay ตรงนี้ */}
+                        เพิ่มสินค้าใหม่ (ราคา: ฿{formatPriceDisplay(req.data.Price)} | สต็อก: {req.data.Stock})
                     </div>
                 );
 
@@ -467,7 +443,6 @@ function AdminProductPage() {
 
     const formatTimestamp = (timestamp) => {
         if (!timestamp) return '-';
-        // ตรวจสอบว่าเป็น Firestore Timestamp หรือไม่
         if (typeof timestamp.toDate === 'function') {
             return timestamp.toDate().toLocaleString('th-TH', {
                 year: 'numeric', month: 'short', day: 'numeric',
@@ -480,13 +455,11 @@ function AdminProductPage() {
     const insertKeyword = (keyword) => {
         setFormData(prev => {
             const currentText = prev.ProductDetail || '';
-            // ถ้ามีข้อความอยู่แล้ว ให้ขึ้นบรรทัดใหม่ก่อนแทรกหัวข้อ แต่ถ้าว่างอยู่ให้ใส่หัวข้อได้เลย
             const newText = currentText.length > 0 ? `${currentText}\n\n${keyword}\n` : `${keyword}\n`;
             return { ...prev, ProductDetail: newText };
         });
     };
 
-    // . รายการคีย์เวิร์ดที่ตรงกับในหน้า ProductsDetailPage
     const detailKeywords = ["คุณสมบัติ", "วิธีใช้งาน", "คำแนะนำ", "ข้อควรระวัง", "รายละเอียดสินค้า", "ข้อมูลทางเทคนิค", "ข้อมูลจำเพาะ", "ขนาดมิติ"];
 
 
@@ -500,7 +473,6 @@ function AdminProductPage() {
                     <div className="flex items-center gap-6">
                         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
 
-                        {/* . แสดง Tabs ให้กดสลับหน้า (เฉพาะ Manager) */}
                         {isManager && (
                             <div className="flex bg-gray-200 p-1 rounded-lg">
                                 <button
@@ -535,7 +507,6 @@ function AdminProductPage() {
 
                     <>
 
-                        {/* Filters & Tabs */}
                         <div className="bg-white rounded-t-xl p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div className="flex gap-2 overflow-x-auto w-full md:w-auto custom-scrollbar pb-2 md:pb-0">
                                 {categories.map(cat => (
@@ -562,7 +533,6 @@ function AdminProductPage() {
                             </div>
                         </div>
 
-                        {/* Table Section */}
                         <div className="bg-white rounded-b-xl shadow-sm border border-gray-200 overflow-visible">
                             <div className="overflow-x-auto overflow-y-visible">
                                 <table className="w-full text-left border-collapse min-w-[800px]">
@@ -583,26 +553,22 @@ function AdminProductPage() {
                                             <tr><td colSpan="6" className="px-6 py-10 text-center text-gray-400">No products found.</td></tr>
                                         ) : (
                                             sortedProducts.map((product) => {
-                                                // . 1. เช็คจำนวน Stock
                                                 const stockQty = Number(product.Stock || 0);
 
-                                                // . 2. กำหนดสี Background ของแถว (รวมคลาส group เดิมของคุณไว้ด้วย)
-                                                let rowBgClass = "hover:bg-gray-50/50 transition group"; // ค่าปกติ
+                                                let rowBgClass = "hover:bg-gray-50/50 transition group";
                                                 if (stockQty === 0) {
-                                                    rowBgClass = "bg-red-50 hover:bg-red-100 transition group"; // ของหมด (สีแดง)
+                                                    rowBgClass = "bg-red-50 hover:bg-red-100 transition group";
                                                 } else if (stockQty < 5) {
-                                                    rowBgClass = "bg-yellow-50 hover:bg-yellow-100 transition group"; // ของเหลือน้อย (สีเหลือง)
+                                                    rowBgClass = "bg-yellow-50 hover:bg-yellow-100 transition group";
                                                 }
 
-                                                // . 3. กำหนดสีตัวหนังสือในช่อง Stock
-                                                let stockTextClass = "text-gray-700 font-semibold"; // ค่าปกติ
+                                                let stockTextClass = "text-gray-700 font-semibold";
                                                 if (stockQty === 0) {
-                                                    stockTextClass = "text-red-600 font-bold"; // ของหมด
+                                                    stockTextClass = "text-red-600 font-bold";
                                                 } else if (stockQty < 5) {
-                                                    stockTextClass = "text-amber-600 font-bold"; // ของเหลือน้อย (ใช้สี Amber จะสวยกว่าตอนอยู่บนพื้นเหลืองอ่อน)
+                                                    stockTextClass = "text-amber-600 font-bold";
                                                 }
 
-                                                // . 4. คืนค่าแท็ก <tr> (อย่าลืมใส่คำว่า return)
                                                 return (
                                                     <tr key={product.id} className={rowBgClass}>
 
@@ -622,13 +588,13 @@ function AdminProductPage() {
                                                             {product.ProductCategory}
                                                         </td>
 
-                                                        {/* . 5. เรียกใช้ตัวแปรสีข้อความตรงนี้ */}
                                                         <td className={`px-6 py-4 text-center ${stockTextClass}`}>
                                                             {product.Stock}
                                                         </td>
 
+                                                        {/* --- ใช้ฟังก์ชัน formatPriceDisplay ตรงนี้ --- */}
                                                         <td className="px-6 py-4 text-right font-bold text-gray-900">
-                                                            ฿{Number(product.Price).toLocaleString()}
+                                                            ฿{formatPriceDisplay(product.Price)}
                                                         </td>
 
                                                         <td className="px-6 py-4 text-center">
@@ -639,7 +605,6 @@ function AdminProductPage() {
                                                             </span>
                                                         </td>
 
-                                                        {/* --- เมนู 3 จุด (Action Menu) --- */}
                                                         <td className="px-6 py-4 text-center relative" ref={openDropdownId === product.id ? dropdownRef : null}>
                                                             <button
                                                                 onClick={() => setOpenDropdownId(openDropdownId === product.id ? null : product.id)}
@@ -675,8 +640,8 @@ function AdminProductPage() {
                                     <th className="px-6 py-4">ผู้ขออนุมัติ</th>
                                     <th className="px-6 py-4">ประเภทรายการ</th>
                                     <th className="px-6 py-4 w-1/4">ชื่อสินค้าเป้าหมาย</th>
-                                    <th className="px-6 py-4">รายละเอียดการแก้ไข</th> {/* คอลัมน์ใหม่ */}
-                                    <th className="px-6 py-4">วันที่ส่งคำขอ</th>       {/* คอลัมน์ใหม่ */}
+                                    <th className="px-6 py-4">รายละเอียดการแก้ไข</th>
+                                    <th className="px-6 py-4">วันที่ส่งคำขอ</th>
                                     <th className="px-6 py-4 text-center">การจัดการ</th>
                                 </tr>
                             </thead>
@@ -698,14 +663,12 @@ function AdminProductPage() {
                                                 {req.targetProductName}
                                             </td>
 
-                                            {/* . ส่วนแสดงรายละเอียดการแก้ไข . */}
                                             <td className="px-6 py-4">
                                                 <div className="bg-gray-50 px-3 py-2 rounded-lg border border-gray-100 inline-block">
                                                     {getRequestDetails(req)}
                                                 </div>
                                             </td>
 
-                                            {/* . ส่วนแสดงวันที่ส่งคำขอ . */}
                                             <td className="px-6 py-4 text-xs text-gray-500 font-medium">
                                                 {formatTimestamp(req.createdAt)}
                                             </td>
@@ -752,31 +715,35 @@ function AdminProductPage() {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">ราคาขาย (บาท) <span className="text-red-500">*</span></label>
                                     <input
-                                        type="number"
-                                        required min={Number(formData.CostPrice) + 1}
+                                        type="text"
+                                        inputMode="decimal" // เด้งคีย์บอร์ดตัวเลขบนมือถือ
+                                        required
                                         value={formData.Price}
                                         onChange={e => {
-                                            e.target.setCustomValidity('');
-                                            setFormData({ ...formData, Price: e.target.value });
-                                        }}
-                                        onInvalid={e => {
-                                            const priceVal = Number(e.target.value);
-                                            const costVal = Number(formData.CostPrice);
+                                            const val = e.target.value;
 
-                                            if (!e.target.value) {
-                                                e.target.setCustomValidity('กรุณากรอกราคาสินค้า');
-                                            }
-                                            // . 1. เช็คเรื่องติดลบหรือเท่ากับ 0 ก่อนเลย
-                                            else if (priceVal <= 0) {
-                                                e.target.setCustomValidity('ไม่สามารถกำหนดราคาที่ติดลบหรือเท่ากับ 0 ได้');
-                                            }
-                                            // . 2. ถ้าไม่ติดลบ ค่อยมาเช็คว่าน้อยกว่าหรือเท่ากับต้นทุนไหม
-                                            else if (priceVal <= costVal) {
-                                                e.target.setCustomValidity('ราคาขายต้องมากกว่าราคาต้นทุน');
+                                            // ดักให้พิมพ์ได้เฉพาะตัวเลข และจุดทศนิยมไม่เกิน 2 ตำแหน่ง
+                                            if (/^\d*\.?\d{0,2}$/.test(val)) {
+                                                const priceVal = Number(val);
+                                                const costVal = Number(formData.CostPrice);
+
+                                                // ย้าย Custom Validity มาไว้ตรงนี้แทน
+                                                if (!val) {
+                                                    e.target.setCustomValidity('กรุณากรอกราคาสินค้า');
+                                                } else if (priceVal <= 0) {
+                                                    e.target.setCustomValidity('ไม่สามารถกำหนดราคาที่ติดลบหรือเท่ากับ 0 ได้');
+                                                } else if (priceVal <= costVal) {
+                                                    e.target.setCustomValidity('ราคาขายต้องมากกว่าราคาต้นทุน');
+                                                } else {
+                                                    e.target.setCustomValidity('');
+                                                }
+
+                                                setFormData({ ...formData, Price: val });
                                             }
                                         }}
-                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 outline-none text-sm" />
-                                    <p className="text-xs text-gray-500 mt-2">ราคาต้นทุนเดิม: ฿{formData.CostPrice}</p>
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 outline-none text-sm"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-2">ราคาต้นทุนเดิม: ฿{formatPriceDisplay(formData.CostPrice)}</p>
                                 </div>
                             )}
 
@@ -791,7 +758,6 @@ function AdminProductPage() {
                                     <div className="border-t border-gray-100 pt-3">
                                         <label className="block text-sm font-bold text-gray-700 mb-1">สาเหตุการแก้ไข <span className="text-red-500">*</span></label>
 
-                                        {/* . 1. Dropdown สาเหตุหลัก */}
                                         <select
                                             required
                                             value={formData.ReasonSelect || ''}
@@ -810,7 +776,6 @@ function AdminProductPage() {
                                             <option value="อื่นๆ">อื่นๆ (โปรดระบุเพิ่มเติม)</option>
                                         </select>
 
-                                        {/* . 2. ช่องพิมพ์เพิ่ม จะโชว์ขึ้นมาก็ต่อเมื่อเลือก "อื่นๆ" เท่านั้น */}
                                         {formData.ReasonSelect === 'อื่นๆ' && (
                                             <div className="mt-3 animate-fade-in-down">
                                                 <textarea
@@ -853,7 +818,6 @@ function AdminProductPage() {
                                                 existingImages.map((url, idx) => (
                                                     <div key={idx} className="relative group aspect-square">
                                                         <img src={url} alt="product" className="w-full h-full object-cover rounded-lg border border-gray-300 shadow-sm" />
-                                                        {/* ปุ่มกดลบรูปภาพ */}
                                                         <button
                                                             type="button"
                                                             onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== idx))}
@@ -871,11 +835,10 @@ function AdminProductPage() {
                                         <label className="block text-sm font-bold text-gray-700 mb-2">เพิ่มรูปภาพใหม่ (เลือกพร้อมกันได้หลายรูป)</label>
                                         <input
                                             type="file" multiple accept="image/*"
-                                            onChange={handleFileChange} // . เปลี่ยนมาใช้ฟังก์ชันใหม่
+                                            onChange={handleFileChange}
                                             className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm cursor-pointer"
                                         />
 
-                                        {/* . โชว์รูปตัวอย่าง */}
                                         {imagePreviews.length > 0 && (
                                             <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3">
                                                 {imagePreviews.map((src, index) => (
@@ -915,20 +878,50 @@ function AdminProductPage() {
                                         </div>
                                     </div>
 
-                                    {/* ราคากับสต็อกจะโชว์เฉพาะตอน Add (ถ้าแก้ไข ต้องไปทำเมนูแยกตาม UC 11, 12) */}
                                     {modalState.type === 'ADD' && (
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-1">ต้นทุน (Cost) <span className="text-red-500">*</span></label>
-                                                <input type="number" required min="0" value={formData.CostPrice} onChange={e => setFormData({ ...formData, CostPrice: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    required
+                                                    value={formData.CostPrice}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (/^\d*\.?\d{0,2}$/.test(val)) {
+                                                            setFormData({ ...formData, CostPrice: val });
+                                                        }
+                                                    }}
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-1">ราคาขาย (Price) <span className="text-red-500">*</span></label>
-                                                <input type="number" required min="0" value={formData.Price} onChange={e => setFormData({ ...formData, Price: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    required
+                                                    value={formData.Price}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (/^\d*\.?\d{0,2}$/.test(val)) {
+                                                            setFormData({ ...formData, Price: val });
+                                                        }
+                                                    }}
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-1">สต็อก (Stock) <span className="text-red-500">*</span></label>
-                                                <input type="number" required min="0" value={formData.Stock} onChange={e => setFormData({ ...formData, Stock: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="0"
+                                                    value={formData.Stock}
+                                                    onChange={e => setFormData({ ...formData, Stock: e.target.value })}
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -937,7 +930,6 @@ function AdminProductPage() {
                                         <div className="flex flex-col md:flex-row md:justify-between md:items-end mb-2 gap-2">
                                             <label className="block text-sm font-bold text-gray-700">รายละเอียดสินค้า</label>
 
-                                            {/* . ปุ่มแทรกหัวข้อย่อย */}
                                             <div className="flex flex-wrap gap-1.5">
                                                 {detailKeywords.map(kw => (
                                                     <button
@@ -997,7 +989,6 @@ function AdminProductPage() {
                                         </div>
                                     </div>
 
-                                    {/* --- แรงดันน้ำและ Youtube URL --- */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">แรงดันน้ำ</label>
@@ -1016,7 +1007,6 @@ function AdminProductPage() {
                                             <input type="text" value={formData.YoutubeURL} onChange={e => setFormData({ ...formData, YoutubeURL: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
                                         </div>
 
-                                        {/* โชว์ปุ่มอัปโหลดเฉพาะตอนเพิ่มสินค้าใหม่ */}
                                         {modalState.type === 'ADD' && (
                                             <div className="md:col-span-2 mt-2 pt-2 border-t border-gray-100">
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">อัปโหลดรูปภาพ (เลือกพร้อมกันได้หลายรูป) <span className="text-red-500">*</span></label>
@@ -1027,7 +1017,6 @@ function AdminProductPage() {
                                                     required
                                                 />
 
-                                                {/* . โชว์รูปตัวอย่างที่เพิ่งเลือก */}
                                                 {imagePreviews.length > 0 && (
                                                     <div className="mt-4 grid grid-cols-3 md:grid-cols-5 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
                                                         {imagePreviews.map((src, index) => (
@@ -1040,12 +1029,9 @@ function AdminProductPage() {
                                             </div>
                                         )}
                                     </div>
-
-
                                 </>
                             )}
 
-                            {/* ข้อความเตือน Approval */}
                             {!isManager && !['INFO', 'IMAGE'].includes(modalState.type) && (
                                 <div className="bg-orange-50 text-orange-700 p-3 rounded-lg text-xs font-medium flex items-start gap-2 border border-orange-100 mt-4">
                                     <p>เนื่องจากคุณเป็น Employee การบันทึกข้อมูลส่วนนี้จะต้องรอให้ Manager อนุมัติก่อนถึงจะแสดงผลจริง</p>

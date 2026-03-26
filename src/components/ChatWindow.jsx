@@ -40,11 +40,13 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 100);
         });
-        if (currentRole === 'admin') {
+        if (currentRole === 'admin' || currentRole === 'adminManager') {
             updateDoc(doc(db, 'chats', chatRoomId), { lastReadByAdmin: serverTimestamp() }).catch((error) => {
                 console.error("Error updating lastReadByAdmin: ", error);
             });
         }
+
+        return () => unsubscribe();
     }, [chatRoomId, currentRole]);
 
     const fetchMyOrders = async () => {
@@ -77,7 +79,10 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         setShowOrderModal(false); // ปิด modal
 
         // สร้างข้อความรูปแบบพิเศษสำหรับออเดอร์
-        const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${order.OrderStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString()}`;
+        const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${order.OrderStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString('th-TH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
 
         try {
             await addDoc(collection(db, 'chats', chatRoomId, 'messages'), {
@@ -232,7 +237,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
                     </div>
                 )}
 
-                {messages.map((msg,index) => {
+                {messages.map((msg, index) => {
                     const isMe = msg.sender === currentRole;
                     const isOrderMessage = msg.text && msg.text.includes("อ้างอิงคำสั่งซื้อ:");
 
@@ -345,7 +350,10 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
                                         <div className="font-bold text-blue-600 text-xs mb-1">Order #{order.OrderNumber}</div>
                                         <div className="flex justify-between text-[10px] text-gray-500">
                                             <span>{order.OrderStatus}</span>
-                                            <span className="font-bold">฿{Number(order.TotalPrice).toLocaleString()}</span>
+                                            <span className="font-bold">฿{Number(order.TotalPrice).toLocaleString('th-TH', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}</span>
                                         </div>
                                     </div>
                                 ))

@@ -197,7 +197,10 @@ function ProductsDetailPage() {
                             <div className="mb-6">
                                 {/* แสดงราคาแบบในรูป 1 */}
                                 {/* <p className="text-gray-400 text-sm line-through">฿ {Number(product.Price * 1.2).toLocaleString()}</p> */}
-                                <p className="text-4xl font-bold text-blue-600">฿ {Number(product.Price).toLocaleString()}</p>
+                                <p className="text-4xl font-bold text-blue-600">฿ {Number(product.Price).toLocaleString('th-TH', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                })}</p>
                                 {/* <p className="text-sm text-gray-500 mt-1">(ราคายังไม่รวม VAT)</p> */}
                             </div>
 
@@ -246,9 +249,9 @@ function ProductsDetailPage() {
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row gap-4 mb-8">
                                 {/* ปุ่มซื้อเลย (ใช้สีเขียวตามรูปต้นฉบับ หรือสีฟ้าตามธีมก็ได้ - อันนี้ใช้เขียวเพื่อให้เด่นเหมือนรูป) */}
-                                <button 
-                                onClick={handleBuyNow}
-                                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5">
+                                <button
+                                    onClick={handleBuyNow}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5">
                                     <CreditCard size={24} />
                                     ซื้อเลย
                                 </button>
