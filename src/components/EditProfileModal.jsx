@@ -152,9 +152,16 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
                 },
                 updatedAt: new Date()
             });
+            // 1. สั่งให้ Toast แสดง
             toast.success("แก้ไขข้อมูลสำเร็จ!");
+
+            // 2. ปิด Modal
             onClose();
-            window.location.reload();
+
+            // 3. หน่วงเวลา 1.5 วินาที (1500 ms) แล้วค่อยรีเฟรชหน้าเว็บ
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } catch (error) {
             console.error("Error updating profile:", error);
             toast.error("แก้ไขข้อมูลไม่สำเร็จ! : " + error.message);
