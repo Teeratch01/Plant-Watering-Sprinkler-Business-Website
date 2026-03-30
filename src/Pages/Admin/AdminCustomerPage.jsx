@@ -156,7 +156,7 @@ function AdminCustomerPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <Users size={28} className="text-blue-600" /> ข้อมูลลูกค้า (Customer Data)
+                            <Users size={28} className="text-blue-600" /> การจัดการข้อมูลลูกค้า (Customer Management)
                         </h1>
                         <p className="text-sm text-gray-500 mt-1">ตรวจสอบและจัดการข้อมูลส่วนตัวของลูกค้ารายย่อย</p>
                     </div>

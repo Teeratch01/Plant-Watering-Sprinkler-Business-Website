@@ -469,12 +469,26 @@ function AdminProductPage() {
 
             <div className="flex-1 container mx-auto px-4 py-8 max-w-7xl">
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div className="flex items-center gap-6">
-                        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+                {/* --- แก้ไขส่วน Header ตรงนี้ --- */}
+                <div className="flex flex-col gap-4 mb-6">
+                    
+                    {/* แถวที่ 1: ชื่อหน้า (และปุ่ม Add Product กรณีไม่ใช่ Manager) */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h1 className="text-2xl font-bold text-gray-900">จัดการข้อมูลสินค้า (Product Management)</h1>
+                        
+                        {/* สำหรับ Admin ทั่วไป (ที่ไม่มี Tabs) ให้ดึงปุ่มมาไว้บรรทัดเดียวกับหัวข้อเลย */}
+                        {!isManager && activeTab === 'PRODUCTS' && (
+                            <button onClick={() => openModal('ADD')} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                                <Plus size={16} /> Add product
+                            </button>
+                        )}
+                    </div>
 
-                        {isManager && (
-                            <div className="flex bg-gray-200 p-1 rounded-lg">
+                    {/* แถวที่ 2: เมนู Tabs และ ปุ่ม Add Product (จะแสดงเฉพาะ Manager เท่านั้น) */}
+                    {isManager && (
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            {/* ฝั่งซ้าย: เมนู Tabs */}
+                            <div className="flex bg-gray-200 p-1 rounded-lg w-fit">
                                 <button
                                     onClick={() => setActiveTab('PRODUCTS')}
                                     className={`px-4 py-1.5 text-sm font-bold rounded-md transition ${activeTab === 'PRODUCTS' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
@@ -491,17 +505,17 @@ function AdminProductPage() {
                                     )}
                                 </button>
                             </div>
-                        )}
-                    </div>
 
-                    {activeTab === 'PRODUCTS' && (
-                        <div className="flex gap-3">
-                            <button onClick={() => openModal('ADD')} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm">
-                                <Plus size={16} /> Add product
-                            </button>
+                            {/* ฝั่งขวา: ปุ่ม Add Product สำหรับ Manager */}
+                            {activeTab === 'PRODUCTS' && (
+                                <button onClick={() => openModal('ADD')} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm">
+                                    <Plus size={16} /> Add product
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
+             
 
                 {activeTab === 'PRODUCTS' ? (
 

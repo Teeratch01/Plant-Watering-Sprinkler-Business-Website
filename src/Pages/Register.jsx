@@ -164,13 +164,23 @@ function Register() {
               />
             </div>
 
-            <div>
+           <div>
               <label className="block text-gray-700 font-medium mb-2">เบอร์โทรศัพท์</label>
               <input 
                 name="phone"
                 type="text"
-                placeholder='xxx-xxx-xxxx' 
-                onChange={handleChange}
+                inputMode="numeric" // ให้คีย์บอร์ดมือถือเด้งแป้นตัวเลข
+                maxLength="10" // จำกัดความยาวเบอร์โทรไทย 10 หลัก
+                placeholder='0xxxxxxxxx' 
+                value={formData.phone} // ผูกค่ากับ State
+                onChange={(e) => {
+                  // ใช้ Regex ลบทุกอย่างที่ไม่ใช่ตัวเลข (0-9) ออก
+                  const onlyNums = e.target.value.replace(/[^0-9]/g, '');
+                  setFormData({
+                    ...formData,
+                    phone: onlyNums
+                  });
+                }}
                 required
                 className="w-full border border-gray-400 p-2 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 rounded"
               />

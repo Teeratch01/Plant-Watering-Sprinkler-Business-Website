@@ -228,7 +228,7 @@ function AdminManagementPage() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <UserCog size={28} className="text-blue-600" /> การจัดการผู้ดูแลระบบ
+                            <UserCog size={28} className="text-blue-600" /> การจัดการผู้ดูแลระบบ (Admin Management)
                         </h1>
                         <p className="text-sm text-gray-500 mt-1">จัดการบัญชีผู้ใช้งาน และกำหนดสิทธิ์การเข้าถึงระบบ</p>
                     </div>
