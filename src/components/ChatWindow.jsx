@@ -75,15 +75,32 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         }
     }
 
+      const getDisplayStatus = (order) => {
+        if (order.OrderStatus === 'Payment In Progress') {
+            return order.PaymentSlipUrl ? 'รอตรวจสอบสลิปโอนเงิน' : 'รออัปโหลดสลิป';
+        }
+
+        switch (order.OrderStatus) {
+            case 'Payment Success': return 'ชำระเงินสำเร็จ';
+            case 'Prepare Order': return 'กำลังเตรียมสินค้า';
+            case 'Packaging Complete': return 'บรรจุสินค้าเรียบร้อย';
+            case 'In transit': return 'อยู่ระหว่างจัดส่ง';
+            case 'Deliver Complete': return 'จัดส่งสำเร็จ';
+            case 'Cancelled': return 'ยกเลิกคำสั่งซื้อ';
+            default: return order.OrderStatus;
+        }
+    };
+
     const handleSendOrder = async (order) => {
         setShowOrderModal(false); // ปิด modal
 
+        const thaiStatus = getDisplayStatus(order);
+
         // สร้างข้อความรูปแบบพิเศษสำหรับออเดอร์
-        const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${order.OrderStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString('th-TH', {
+const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${thaiStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString('th-TH', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })}`;
-
         try {
             await addDoc(collection(db, 'chats', chatRoomId, 'messages'), {
                 text: messageText,
@@ -214,6 +231,8 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
             }); // จะได้ format "12 มี.ค. 2569"
         }
     };
+
+  
 
 
 
@@ -349,7 +368,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
                                     >
                                         <div className="font-bold text-blue-600 text-xs mb-1">Order #{order.OrderNumber}</div>
                                         <div className="flex justify-between text-[10px] text-gray-500">
-                                            <span>{order.OrderStatus}</span>
+                                            <span>{getDisplayStatus(order)}</span>
                                             <span className="font-bold">฿{Number(order.TotalPrice).toLocaleString('th-TH', {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2

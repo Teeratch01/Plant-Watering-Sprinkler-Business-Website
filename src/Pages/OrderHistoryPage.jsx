@@ -134,7 +134,7 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
                     {needsSlip ? (
                         isExpired ? <>หมดเวลาอัปโหลด <XCircle size={18} /></> : <>อัปโหลดสลิปโอนเงิน <Upload size={18} /></>
                     ) : (
-                        <>Order Details <ChevronRight size={18} /></>
+                        <>รายละเอียดคำสั่งซื้อ <ChevronRight size={18} /></>
                     )}
                 </button>
 

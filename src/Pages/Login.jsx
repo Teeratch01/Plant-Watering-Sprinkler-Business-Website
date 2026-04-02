@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Register from './Register';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, db } from '../FirebaseConfig'; // import auth จากไฟล์ config ของคุณ
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { toast } from 'react-toastify';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -22,9 +22,6 @@ function Login() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-
-
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -37,6 +34,13 @@ function Login() {
 
       if (docSnap.exists()) {
         const userData = docSnap.data();
+
+        if ((userData.role === 'admin' || userData.role === 'adminManager') && userData.adminStatus === 'Inactive') {
+          await signOut(auth); // สั่งเตะออกจากระบบทันที
+          toast.error("บัญชีผู้ดูแลระบบของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้จัดการ");
+          setError('Account is inactive.');
+          return; // หยุดการทำงานของฟังก์ชันทันที ไม่ให้ไปหน้า Dashboard
+        }
 
         if (userData.role === 'admin' || userData.role === 'adminManager') {
           toast.success("Welcome Admin!");

@@ -25,7 +25,8 @@ function AdminProductPage() {
     const [modalState, setModalState] = useState({
         type: null,
         isOpen: false,
-        selectedProduct: null
+        selectedProduct: null,
+        selectedRequest: null
     });
 
     const [formData, setFormData] = useState({
@@ -112,7 +113,7 @@ function AdminProductPage() {
     const isManager = currentUser?.role === 'adminManager';
     const categories = ['All', ...new Set(products.map(p => p.ProductCategory).filter(Boolean))];
 
-    const openModal = (type, product = null) => {
+    const openModal = (type, product = null, request = null) => {
         setOpenDropdownId(null);
         if (product) {
             setFormData({
@@ -144,11 +145,11 @@ function AdminProductPage() {
             setImageFiles([]);
             setImagePreviews([]);
         }
-        setModalState({ type, isOpen: true, selectedProduct: product });
+        setModalState({ type, isOpen: true, selectedProduct: product, selectedRequest: request });
     }
 
     const closeModal = () => {
-        setModalState({ type: null, isOpen: false, selectedProduct: null });
+        setModalState({ type: null, isOpen: false, selectedProduct: null, selectedRequest: null });
         setImageFiles([]);
         setImagePreviews([]);
     };
@@ -430,9 +431,16 @@ function AdminProductPage() {
                 );
             case 'PRODUCT_ADD':
                 return (
-                    <div className="text-emerald-600 text-xs font-semibold">
-                        {/* ใช้ฟังก์ชัน formatPriceDisplay ตรงนี้ */}
-                        เพิ่มสินค้าใหม่ (ราคา: ฿{formatPriceDisplay(req.data.Price)} | สต็อก: {req.data.Stock})
+                    <div className="flex flex-col gap-2">
+                        <div className="text-emerald-600 text-xs font-semibold">
+                            เพิ่มสินค้าใหม่ (ราคา: ฿{formatPriceDisplay(req.data.Price)} | สต็อก: {req.data.Stock})
+                        </div>
+                        <button
+                            onClick={() => openModal('VIEW_ADD_DETAILS', null, req)}
+                            className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded hover:bg-emerald-100 transition w-fit flex items-center gap-1 shadow-sm font-bold"
+                        >
+                            <Search size={12} /> ดูรายละเอียดสินค้า
+                        </button>
                     </div>
                 );
 
@@ -471,15 +479,15 @@ function AdminProductPage() {
 
                 {/* --- แก้ไขส่วน Header ตรงนี้ --- */}
                 <div className="flex flex-col gap-4 mb-6">
-                    
+
                     {/* แถวที่ 1: ชื่อหน้า (และปุ่ม Add Product กรณีไม่ใช่ Manager) */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <h1 className="text-2xl font-bold text-gray-900">จัดการข้อมูลสินค้า (Product Management)</h1>
-                        
+
                         {/* สำหรับ Admin ทั่วไป (ที่ไม่มี Tabs) ให้ดึงปุ่มมาไว้บรรทัดเดียวกับหัวข้อเลย */}
                         {!isManager && activeTab === 'PRODUCTS' && (
                             <button onClick={() => openModal('ADD')} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                                <Plus size={16} /> Add product
+                                <Plus size={16} /> เพิ่มสินค้า
                             </button>
                         )}
                     </div>
@@ -509,13 +517,13 @@ function AdminProductPage() {
                             {/* ฝั่งขวา: ปุ่ม Add Product สำหรับ Manager */}
                             {activeTab === 'PRODUCTS' && (
                                 <button onClick={() => openModal('ADD')} className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm">
-                                    <Plus size={16} /> Add product
+                                    <Plus size={16} /> เพิ่มสินค้า
                                 </button>
                             )}
                         </div>
                     )}
                 </div>
-             
+
 
                 {activeTab === 'PRODUCTS' ? (
 
@@ -669,7 +677,11 @@ function AdminProductPage() {
 
                                             <td className="px-6 py-4">
                                                 <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-bold border border-blue-200">
-                                                    {req.type?.replace('PRODUCT_', '') || 'UNKNOWN'}
+                                                    {req.type === 'PRODUCT_ADD' ? 'เพิ่มสินค้า' :
+                                                        req.type === 'PRODUCT_PRICE' ? 'แก้ไขราคา' :
+                                                            req.type === 'PRODUCT_STOCK' ? 'แก้ไขสต็อก' :
+                                                                req.type === 'PRODUCT_STATUS' ? 'แก้ไขสถานะ' :
+                                                                    req.type?.replace('PRODUCT_', '')}
                                                 </span>
                                             </td>
 
@@ -718,6 +730,7 @@ function AdminProductPage() {
                                 {modalState.type === 'PRICE' && "แก้ไขราคาสินค้า"}
                                 {modalState.type === 'STOCK' && "แก้ไขจำนวนสินค้า"}
                                 {modalState.type === 'STATUS' && "แก้ไขสถานะสินค้า"}
+                                {modalState.type === 'VIEW_ADD_DETAILS' && "รายละเอียดคำขอเพิ่มสินค้า"}
                             </h2>
                             <button onClick={closeModal} className="text-gray-400 hover:text-red-500 transition"><X size={24} /></button>
                         </div>
@@ -1042,8 +1055,63 @@ function AdminProductPage() {
                                                 )}
                                             </div>
                                         )}
+
+
                                     </div>
                                 </>
+                            )}
+
+                            {/* --- FORM: ดูรายละเอียดคำขอเพิ่มสินค้า (Read-only) --- */}
+                            {modalState.type === 'VIEW_ADD_DETAILS' && modalState.selectedRequest && (
+                                <div className="space-y-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><span className="font-bold text-gray-700">ชื่อสินค้า:</span> {modalState.selectedRequest.data.ProductName}</div>
+                                        <div><span className="font-bold text-gray-700">หมวดหมู่:</span> {modalState.selectedRequest.data.ProductCategory}</div>
+                                        <div><span className="font-bold text-gray-700">ราคาต้นทุน:</span> ฿{formatPriceDisplay(modalState.selectedRequest.data.CostPrice)}</div>
+                                        <div><span className="font-bold text-gray-700">ราคาขาย:</span> ฿{formatPriceDisplay(modalState.selectedRequest.data.Price)}</div>
+                                        <div><span className="font-bold text-gray-700">สต็อกเริ่มต้น:</span> {modalState.selectedRequest.data.Stock} ชิ้น</div>
+                                        <div><span className="font-bold text-gray-700">แรงดันน้ำ:</span> {modalState.selectedRequest.data.Pressure}</div>
+                                    </div>
+
+                                    <div>
+                                        <span className="font-bold text-gray-700 block mb-1">รายละเอียดสินค้า:</span>
+                                        <div className="bg-white p-3 rounded-lg border border-gray-200 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                                            {modalState.selectedRequest.data.ProductDetail || '-'}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <span className="font-bold text-gray-700 block mb-1">พื้นที่เหมาะสม:</span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {modalState.selectedRequest.data.AreaType?.length > 0
+                                                    ? modalState.selectedRequest.data.AreaType.map((area, i) => <span key={i} className="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded border border-blue-100 font-bold">{area}</span>)
+                                                    : '-'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="font-bold text-gray-700 block mb-1">ชนิดพืชที่เหมาะสม:</span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {modalState.selectedRequest.data.PlantType?.length > 0
+                                                    ? modalState.selectedRequest.data.PlantType.map((plant, i) => <span key={i} className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0.5 rounded border border-emerald-100 font-bold">{plant}</span>)
+                                                    : '-'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {modalState.selectedRequest.data.ProductPic?.length > 0 && (
+                                        <div>
+                                            <span className="font-bold text-gray-700 block mb-2">รูปภาพสินค้า:</span>
+                                            <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                                                {modalState.selectedRequest.data.ProductPic.map((pic, i) => (
+                                                    <a href={pic} target="_blank" rel="noopener noreferrer" key={i}>
+                                                        <img src={pic} alt="preview" className="w-full aspect-square object-cover rounded-lg border border-gray-200 hover:opacity-80 transition bg-white" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             {!isManager && !['INFO', 'IMAGE'].includes(modalState.type) && (
@@ -1052,12 +1120,19 @@ function AdminProductPage() {
                                 </div>
                             )}
 
-                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-                                <button type="button" onClick={closeModal} className="px-5 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">ยกเลิก</button>
-                                <button type="submit" disabled={isSubmitting} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 flex items-center gap-2">
-                                    {isSubmitting ? 'กำลังบันทึก...' : (isManager || modalState.type === 'INFO' ? 'บันทึกข้อมูล' : 'ส่งคำขออนุมัติ')}
-                                </button>
-                            </div>
+                            {/* --- ส่วนปุ่มกดยกเลิก/บันทึก (แก้ไขให้ซ่อนในหน้า VIEW_ADD_DETAILS) --- */}
+                            {modalState.type !== 'VIEW_ADD_DETAILS' ? (
+                                <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+                                    <button type="button" onClick={closeModal} className="px-5 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">ยกเลิก</button>
+                                    <button type="submit" disabled={isSubmitting} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 flex items-center gap-2">
+                                        {isSubmitting ? 'กำลังบันทึก...' : (isManager || modalState.type === 'INFO' ? 'บันทึกข้อมูล' : 'ส่งคำขออนุมัติ')}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+                                    <button type="button" onClick={closeModal} className="px-5 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">ปิดหน้าต่าง</button>
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>

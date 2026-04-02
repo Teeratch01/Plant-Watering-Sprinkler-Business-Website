@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../../FirebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { toast } from 'react-toastify';
 
 
 const AdminNavbar = () => {
@@ -67,6 +68,42 @@ const AdminNavbar = () => {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        // 1. ตรวจสอบว่ามีใคร Login อยู่ไหม
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // 2. ถ้ามีคน Login อยู่ ให้สร้าง Real-time Listener ไปส่องข้อมูลของคนๆ นั้นตลอดเวลา
+                const userDocRef = doc(db, 'users', user.uid);
+
+                const unsubscribeSnapshot = onSnapshot(userDocRef, async (docSnap) => {
+                    if (docSnap.exists()) {
+                        const userData = docSnap.data();
+
+                        // 3. ทันทีที่ฐานข้อมูลถูกเปลี่ยนเป็น Inactive โค้ดตรงนี้จะทำงานทันที!
+                        if ((userData.role === 'admin' || userData.role === 'adminManager') && userData.adminStatus === 'Inactive') {
+
+                            toast.error("เซสชันหมดอายุ: บัญชีของคุณถูกระงับการใช้งาน", {
+                                autoClose: 2000 // ให้ Toast โชว์แค่ 2 วินาที
+                            });
+
+                            // 2. หน่วงเวลา 1.5 วินาที แล้วค่อย Sign out และเปลี่ยนหน้า
+                            setTimeout(async () => {
+                                await signOut(auth);
+                                navigate('/login');
+                            }, 1500);
+                        }
+                    }
+                });
+
+                // คืนค่าฟังก์ชันสำหรับยกเลิกการดักฟังข้อมูล (Cleanup)
+                return () => unsubscribeSnapshot();
+            }
+        });
+
+        // คืนค่าฟังก์ชันสำหรับยกเลิกการดักฟัง Auth
+        return () => unsubscribeAuth();
+    }, [navigate]);
 
     useEffect(() => {
         const qOrders = query(collection(db, 'orders'));

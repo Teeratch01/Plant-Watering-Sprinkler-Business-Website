@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use ,useRef} from 'react';
 import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../FirebaseConfig';
 import AdminNavbar from '../../components/Admin/AdminNavbar';
@@ -7,7 +7,8 @@ import {
     ScatterChart, Scatter, ZAxis,
     XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
-import { TrendingUp, TrendingDown, Package, Map, DollarSign, ShoppingCart, MapPin, Activity, Download } from 'lucide-react';
+
+import { TrendingUp, TrendingDown, Package, Map, DollarSign, ShoppingCart, MapPin, Activity, Download, ChevronDown, Search } from 'lucide-react';
 
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from '@vnedyalk0v/react19-simple-maps';
 import { scaleLinear } from "d3-scale";
@@ -114,6 +115,23 @@ function AdminDashboard() {
 
     const [selectedProvince, setSelectedProvince] = useState(null);
 
+    const [selectedProductId, setSelectedProductId] = useState('');
+
+    const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const productDropdownRef = useRef(null);
+
+    // ฟังก์ชันสำหรับคลิกพื้นที่ว่างแล้วปิด Dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
+                setIsProductDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
 
     // --- ฟังก์ชันจัดฟอร์แมตตัวเลข (ใส่ .00 ให้ยอดขาย) ---
     const formatValueDisplay = (val, mode = viewMode) => {
@@ -160,34 +178,55 @@ function AdminDashboard() {
     }, []);
 
 
-    const filteredOrders = orders.filter(order => {
-        if (!startDate || !endDate) return true;
-        let orderDate;
-        if (order.OrderDate?.toDate) orderDate = order.OrderDate.toDate();
-        else if (order.OrderDate) orderDate = new Date(order.OrderDate);
-        else return false;
+    
+    const filteredOrders = orders.map(order => {
+        // 1. กรองวันที่ (Date Filter)
+        if (startDate || endDate) {
+            let orderDate;
+            if (order.OrderDate?.toDate) orderDate = order.OrderDate.toDate();
+            else if (order.OrderDate) orderDate = new Date(order.OrderDate);
+            else return null;
 
-        orderDate.setHours(0, 0, 0, 0);
+            orderDate.setHours(0, 0, 0, 0);
 
-        if (startDate) {
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            if (orderDate < start) return false;
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                if (orderDate < start) return null;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                if (orderDate > end) return null;
+            }
         }
-        if (endDate) {
-            const end = new Date(endDate);
-            end.setHours(23, 59, 59, 999);
-            if (orderDate > end) return false;
+
+        // 2. กรองสินค้า (Product Filter)
+        if (selectedProductId) {
+            const matchedItems = (order.Items || []).filter(item => item.ProductID === selectedProductId);
+            
+            // ถ้าออเดอร์นี้ไม่มีสินค้าที่เลือก ให้ตัดบิลนี้ทิ้งไปเลย
+            if (matchedItems.length === 0) return null; 
+
+            // คำนวณยอดขายใหม่เฉพาะสินค้านั้น (ไม่รวมตัวอื่นในบิล)
+            const newTotal = matchedItems.reduce((sum, item) => sum + (Number(item.Price || 0) * Number(item.Quantity || 1)), 0);
+            
+            return {
+                ...order,
+                Items: matchedItems,
+                TotalPrice: newTotal
+            };
         }
-        return true;
-    });
+
+        return order;
+    }).filter(Boolean); // เอาบิลที่ไม่ผ่านเงื่อนไข (null) ออก
 
 
     const getMonthlySalesData = () => {
         const sortedData = {};
         const monthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
-        orders.forEach(order => {
+        filteredOrders.forEach(order => {
             let date;
             if (order.OrderDate && typeof order.OrderDate.toDate === 'function') {
                 date = order.OrderDate.toDate();
@@ -343,9 +382,9 @@ function AdminDashboard() {
 
 
     const getProductGrowthData = () => {
-        if (orders.length === 0) return [];
+        if (filteredOrders.length === 0) return [];
 
-        const dates = orders.map(o => {
+        const dates = filteredOrders.map(o => {
             if (o.OrderDate?.toDate) return o.OrderDate.toDate();
             if (o.OrderDate) return new Date(o.OrderDate);
             return new Date();
@@ -361,7 +400,7 @@ function AdminDashboard() {
         const currentData = {};
         const lastData = {};
 
-        orders.forEach(order => {
+        filteredOrders.forEach(order => {
             let date;
             if (order.OrderDate?.toDate) date = order.OrderDate.toDate();
             else if (order.OrderDate) date = new Date(order.OrderDate);
@@ -414,9 +453,9 @@ function AdminDashboard() {
     const productGrowth = getProductGrowthData();
 
     const getOverallGrowthKPI = () => {
-        if (orders.length === 0) return { revenueGrowth: 0, qtyGrowth: 0, currentRevenue: 0, currentQty: 0 };
+        if (filteredOrders.length === 0) return { revenueGrowth: 0, qtyGrowth: 0, currentRevenue: 0, currentQty: 0 };
 
-        const dates = orders.map(o => {
+        const dates = filteredOrders.map(o => {
             if (o.OrderDate?.toDate) return o.OrderDate.toDate();
             if (o.OrderDate) return new Date(o.OrderDate);
             return new Date();
@@ -432,7 +471,7 @@ function AdminDashboard() {
         let currentRevenue = 0; let lastRevenue = 0;
         let currentQty = 0; let lastQty = 0;
 
-        orders.forEach(order => {
+        filteredOrders.forEach(order => {
             let date;
             if (order.OrderDate?.toDate) date = order.OrderDate.toDate();
             else if (order.OrderDate) date = new Date(order.OrderDate);
@@ -689,34 +728,122 @@ function AdminDashboard() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 font-bold px-1">ตั้งแต่วันที่</span>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="text-sm border-none focus:ring-0 text-gray-700 bg-transparent cursor-pointer"
-                            />
-                        </div>
-                        <span className="text-gray-300">-</span>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-500 font-bold px-1">ถึงวันที่</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="text-sm border-none focus:ring-0 text-gray-700 bg-transparent cursor-pointer"
-                            />
-                        </div>
-                        {(startDate || endDate) && (
+                    {/* เปลี่ยนโครงสร้างส่วน Filter ให้จัดเรียงสวยงาม */}
+                    <div className="flex flex-col md:flex-row items-end gap-2">
+                        
+                        {/* เพิ่ม Dropdown สินค้า */}
+                        {/* Custom Searchable Dropdown */}
+                        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200 relative" ref={productDropdownRef}>
+                            <span className="text-[10px] text-gray-500 font-bold px-1 shrink-0">กรองด้วยสินค้า:</span>
+                            
+                            {/* ปุ่มสำหรับกดเปิด Dropdown */}
                             <button
-                                onClick={() => { setStartDate(''); setEndDate(''); }}
-                                className="ml-2 px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs font-bold transition-colors"
+                                type="button"
+                                onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+                                className="w-48 md:w-64 flex justify-between items-center text-sm text-gray-700 bg-transparent outline-none cursor-pointer"
                             >
-                                ล้าง
+                                <span className="truncate text-left">
+                                    {selectedProductId
+                                        ? products.find(p => p.id === selectedProductId)?.ProductName || 'ไม่พบสินค้า'
+                                        : 'ทั้งหมด (All Products)'}
+                                </span>
+                                <ChevronDown size={14} className={`text-gray-400 ml-2 shrink-0 transition-transform ${isProductDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
-                        )}
+
+                            {/* หน้าต่าง Dropdown รายการสินค้า */}
+                            {isProductDropdownOpen && (
+                                <div className="absolute top-full left-0 mt-2 w-full min-w-[300px] bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in-down">
+                                    
+                                    {/* ช่องพิมพ์ค้นหา */}
+                                    <div className="p-2 border-b border-gray-100 bg-gray-50 sticky top-0">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="พิมพ์ชื่อสินค้าเพื่อค้นหา..."
+                                                value={productSearchQuery}
+                                                onChange={(e) => setProductSearchQuery(e.target.value)}
+                                                className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                autoFocus // ให้เคอร์เซอร์โฟกัสพร้อมพิมพ์ทันทีที่เปิด
+                                            />
+                                            <Search size={14} className="absolute left-2.5 top-3 text-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    {/* รายการตัวเลือก */}
+                                    <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                                        {/* ตัวเลือก: ทั้งหมด */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedProductId('');
+                                                setIsProductDropdownOpen(false);
+                                                setProductSearchQuery('');
+                                            }}
+                                            className={`w-full text-left px-3 py-2.5 text-sm rounded-md transition-colors ${!selectedProductId ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}
+                                        >
+                                            ทั้งหมด (All Products)
+                                        </button>
+
+                                        {/* รายการสินค้าที่ถูกกรองด้วยช่องค้นหา */}
+                                        {products
+                                            .filter(p => p.ProductName?.toLowerCase().includes(productSearchQuery.toLowerCase()))
+                                            .map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedProductId(p.id);
+                                                        setIsProductDropdownOpen(false);
+                                                        setProductSearchQuery(''); // เคลียร์ช่องค้นหาเมื่อเลือกเสร็จ
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2.5 text-sm rounded-md transition-colors truncate ${selectedProductId === p.id ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}
+                                                >
+                                                    {p.ProductName}
+                                                </button>
+                                            ))
+                                        }
+
+                                        {/* กรณีค้นหาแล้วไม่เจอ */}
+                                        {products.filter(p => p.ProductName?.toLowerCase().includes(productSearchQuery.toLowerCase())).length === 0 && (
+                                            <div className="px-3 py-4 text-center text-sm text-gray-400">
+                                                ไม่พบสินค้าที่ค้นหา
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* กล่องเลือกวันที่ (ของเดิม) */}
+                        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-500 font-bold px-1">ตั้งแต่วันที่</span>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="text-sm border-none focus:ring-0 text-gray-700 bg-transparent cursor-pointer"
+                                />
+                            </div>
+                            <span className="text-gray-300">-</span>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-500 font-bold px-1">ถึงวันที่</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="text-sm border-none focus:ring-0 text-gray-700 bg-transparent cursor-pointer"
+                                />
+                            </div>
+                            {(startDate || endDate || selectedProductId) && (
+                                <button
+                                    onClick={() => { setStartDate(''); setEndDate(''); setSelectedProductId(''); }}
+                                    className="ml-2 px-3 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded text-xs font-bold transition-colors"
+                                >
+                                    ล้าง
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 

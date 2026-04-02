@@ -240,7 +240,7 @@ function AdminOrderPage() {
                 email: order.CustomerEmail,
                 name: order.CustomerName || 'ลูกค้า',
                 title: `แจ้งสถานะการชำระเงิน คำสั่งซื้อ #${order.OrderNumber}`,
-                message: `ตรวจสอบพบว่ายอดเงินในสลิปที่คุณแนบมา ไม่ตรงกับยอดสุทธิของคำสั่งซื้อ \n\nยอดสุทธิที่ต้องชำระคือ: ฿${Number(order.TotalPrice).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \n\nคุณสามารถดูสลิปเดิมที่แนบมาผิดได้ที่ลิงก์นี้: ${order.PaymentSlipUrl} \n\nกรุณาทำการโอนเงินให้ถูกต้อง และเข้าสู่ระบบเพื่ออัปโหลดสลิปใหม่ผ่านหน้า "ประวัติการสั่งซื้อ" ของคุณ หรือนำเลขคำสั่งซื้อที่ได้รับผ่านอีเมลนำไปค้นหาในเมนู "คำสั่งซื้อ" เพื่ออัปโหลดสลิปใหม่อีกครั้ง`
+                message: `ตรวจสอบพบว่ายอดเงินในสลิปที่คุณแนบมา ไม่ตรงกับยอดสุทธิของคำสั่งซื้อ หรือ หลักฐานการชำระเงินเกิดข้อผิดพลาด\n\nยอดสุทธิที่ต้องชำระคือ: ฿${Number(order.TotalPrice).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \n\nคุณสามารถดูสลิปเดิมที่แนบมาผิดได้ที่ลิงก์นี้: ${order.PaymentSlipUrl} \n\nกรุณาทำการโอนเงินให้ถูกต้อง หรือ ทำการตรวจสอบการโอนเงินอีกครั้ง และเข้าสู่ระบบเพื่ออัปโหลดสลิปใหม่ผ่านหน้า "ประวัติการสั่งซื้อ" ของคุณ หรือนำเลขคำสั่งซื้อที่ได้รับผ่านอีเมลนำไปค้นหาในเมนู "คำสั่งซื้อ" เพื่ออัปโหลดสลิปใหม่อีกครั้ง`
             };
 
             // ใส่ YOUR_SERVICE_ID, YOUR_TEMPLATE_ID, YOUR_PUBLIC_KEY จากเว็บ EmailJS ของคุณ
@@ -609,7 +609,7 @@ function AdminOrderPage() {
                                                                     disabled={isRejecting || viewModal.order.OrderStatus !== 'Payment In Progress'}
                                                                     className="flex-1 bg-red-500 hover:bg-red-600 text-white text-[11px] font-bold py-2.5 px-1 rounded-lg transition shadow-sm disabled:opacity-50 flex items-center justify-center text-center"
                                                                 >
-                                                                    {isRejecting ? 'กำลังส่ง Email...' : 'ปฏิเสธ (ยอดไม่ตรง)'}
+                                                                    {isRejecting ? 'กำลังส่ง Email...' : 'ปฏิเสธการชำระเงิน'}
                                                                 </button>
 
                                                                 <button
