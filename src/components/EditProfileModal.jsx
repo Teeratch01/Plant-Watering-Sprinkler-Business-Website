@@ -5,7 +5,8 @@ import {
     getAuth,
     updatePassword,
     reauthenticateWithCredential,
-    EmailAuthProvider
+    EmailAuthProvider,
+    signOut
 } from "firebase/auth";
 import { X, User, Lock, Save } from 'lucide-react';
 import { CreateInput } from "thai-address-autocomplete-react";
@@ -109,10 +110,19 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
     }, [isOpen, userId]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        let { name, value } = e.target;
+
+        // ดักจับถ้าฟิลด์ที่กำลังพิมพ์คือ phone
+        if (name === 'phone') {
+            // กรองเอาเฉพาะตัวเลข (0-9) เท่านั้น
+            const cleaned = value.replace(/\D/g, '');
+            // จำกัดความยาวสูงสุด 10 หลัก
+            value = cleaned.slice(0, 10);
+        }
+
         setFormData(prev => ({
             ...prev,
-            [name]: e.target.value
+            [name]: value
         }));
     }
 
@@ -194,8 +204,13 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
 
                 // 3. ถ้ารหัสเก่าถูก ค่อยเปลี่ยนเป็นรหัสใหม่
                 await updatePassword(user, passData.newPass);
-                setPassMsg({ type: 'success', text: 'เปลี่ยนรหัสผ่านสำเร็จ' });
+                setPassMsg({ type: 'success', text: 'เปลี่ยนรหัสผ่านสำเร็จ ระบบกำลังออกจากระบบ...' });
                 setPassData({ newPass: '', confirmPass: '', oldPass: '' });
+
+                setTimeout(async () => {
+                    await signOut(auth);
+                    window.location.href = '/login';
+                }, 1500);
             }
             catch (error) {
                 if (error.code === 'auth/requires-recent-login') {
@@ -230,9 +245,14 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
             await reauthenticateWithCredential(user, credential);
             setIsReAuthOpen(false);
             await updatePassword(user, pendingNewPassword);
-            setPassMsg({ type: 'success', text: 'ยืนยันตัวตนและเปลี่ยนรหัสผ่านสำเร็จ!' });
+            setPassMsg({ type: 'success', text: 'ยืนยันตัวตนและเปลี่ยนรหัสผ่านสำเร็จ! ระบบกำลังออกจากระบบ...' });
             setPendingNewPassword(null);
             setPassData({ newPass: '', confirmPass: '' });
+
+            setTimeout(async () => {
+                await signOut(auth);
+                window.location.href = '/login';
+            }, 1500);
         } catch (error) {
             toast.error("รหัสผ่านไม่ถูกต้อง: " + error.message);
         }

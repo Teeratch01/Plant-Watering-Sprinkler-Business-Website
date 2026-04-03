@@ -1325,7 +1325,7 @@ function AdminDashboard() {
                                         </h3>
                                         <ResponsiveContainer width="100%" height="85%">
                                             <PieChart>
-                                                <Pie data={locationData.slice(0, 6)} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                                <Pie data={locationData.slice(0, 6)} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}>
                                                     {locationData.slice(0, 6).map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}

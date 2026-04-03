@@ -230,7 +230,7 @@ function AdminOrderPage() {
             return;
         }
 
-        if (!window.confirm('ยืนยันการปฏิเสธสลิปและส่งอีเมลแจ้งลูกค้าให้โอนใหม่?')) return;
+        if (!window.confirm('ยืนยันการปฏิเสธสลิปและส่งอีเมลแจ้งลูกค้าให้อัปโหลดสลิปใหม่?')) return;
 
         setIsRejecting(true);
 
@@ -417,9 +417,13 @@ function AdminOrderPage() {
                                                             <select
                                                                 value={order.OrderStatus || ''}
                                                                 onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                                //คลาส disabled:... เข้าไปเพื่อให้เห็นชัดเจนว่าปุ่มถูกล็อคแล้ว
                                                                 className={`w-full border rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-bold
-        ${isNeedsApproval ? 'border-orange-400 text-orange-600 bg-orange-50 animate-pulse' : 'border-gray-200 bg-white'}`}
-                                                                disabled={order.OrderStatus === 'Cancelled'}
+        ${isNeedsApproval ? 'border-orange-400 text-orange-600 bg-orange-50 animate-pulse' : 'border-gray-200 bg-white'}
+        disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200`}
+
+                                                                //  เพิ่มเงื่อนไขการล็อค (disabled) สำหรับ Deliver Complete เข้าไป
+                                                                disabled={order.OrderStatus === 'Cancelled' || order.OrderStatus === 'Deliver Complete'}
                                                             >
                                                                 {STATUS_OPTIONS.map(option => (
                                                                     <option key={option.value} value={option.value}>{option.label}</option>

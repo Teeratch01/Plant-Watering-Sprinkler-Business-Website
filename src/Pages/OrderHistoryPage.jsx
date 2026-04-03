@@ -69,7 +69,7 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
                 <div className="flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h3 className="font-bold text-lg text-gray-900">
-                            Order #{order.OrderNumber}
+                            คำสั่งซื้อหมายเลข #{order.OrderNumber}
                         </h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 w-fit ${getStatusColor(order)}`}>
                             {getStatusIcon(order)}

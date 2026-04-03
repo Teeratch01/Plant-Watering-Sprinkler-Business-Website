@@ -96,7 +96,7 @@ const OrderDetailCard = ({ order, payment }) => {
         <div className="p-8 border-b border-gray-100 flex flex-col md:flex-row justify-between md:items-center gap-4">
             <div>
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                    Order #{order.OrderNumber}
+                    คำสั่งซื้อหมายเลข #{order.OrderNumber}
                 </h2>
                 <p className="text-gray-500 mt-1">
                     สั่งซื้อเมื่อ: {order.OrderDate?.toDate ? order.OrderDate.toDate().toLocaleString('th-TH') : ''}

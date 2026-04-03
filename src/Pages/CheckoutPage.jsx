@@ -123,7 +123,17 @@ function CheckoutPage() {
     }, []);
 
     const handleInputChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        let { name, value } = e.target;
+
+    
+        if (name === 'phone') {
+            // ใช้ Regex \D เพื่อกรองเอาเฉพาะตัวเลข (0-9) เท่านั้น
+            const cleaned = value.replace(/\D/g, '');
+            // จำกัดความยาวสูงสุด 10 หลัก
+            value = cleaned.slice(0, 10);
+        }
+
+        setFormData({ ...formData, [name]: value });
     };
 
     const handlePurchase = async (e) => {
@@ -213,6 +223,8 @@ function CheckoutPage() {
 
                 if (!currentUser) {
                     userDataToSave.createdAt = serverTimestamp();
+                    userDataToSave.isGuest = true;      // บอกว่าเป็น Guest
+                    userDataToSave.role = 'guest';
                 }
                 transaction.set(userRef, userDataToSave, { merge: true });
 
