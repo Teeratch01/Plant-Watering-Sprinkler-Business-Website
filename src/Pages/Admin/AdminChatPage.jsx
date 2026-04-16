@@ -9,7 +9,7 @@ function AdminChatPage() {
     const [chatRooms, setChatRooms] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null); // เก็บแค่ ID ก็พอ
 
-    // ดึงรายชื่อห้องแชท
+    // ดึงรายชื่อห้องแชต
     useEffect(() => {
         const q = query(collection(db, "chats"), orderBy("lastMessageAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -31,7 +31,7 @@ function AdminChatPage() {
             
                 <div className="p-4 border-b bg-gray-50 font-bold flex gap-2">
                     
-                    <MessageSquare className="text-blue-600"/> แชทลูกค้า
+                    <MessageSquare className="text-blue-600"/> แชตลูกค้า
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     
@@ -61,7 +61,7 @@ function AdminChatPage() {
                     />
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-gray-400">
-                        เลือกรายการเพื่อเริ่มแชท
+                        เลือกรายการเพื่อเริ่มแชต
                     </div>
                 )}
             </div>

@@ -5,7 +5,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Send, Plus, Package, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 /**
- * @param {string} chatRoomId - ID ของห้องแชท (ปกติคือ UID ของลูกค้า)
+ * @param {string} chatRoomId - ID ของห้องแชต (ปกติคือ UID ของลูกค้า)
  * @param {string} currentRole - บทบาทของคนดู ('admin' หรือ 'customer')
  * @param {string} customerName - ชื่อลูกค้า (ส่งมาจาก ClientChatPage)
  */
@@ -179,7 +179,7 @@ const messageText = `📦 อ้างอิงคำสั่งซื้อ: #
 
             await addDoc(collection(db, 'chats', chatRoomId, 'messages'), messageData);
 
-            // --- 3.3 อัปเดตข้อมูลของห้องแชท (Last Message) ---
+            // --- 3.3 อัปเดตข้อมูลของห้องแชต (Last Message) ---
             const chatDocRef = doc(db, 'chats', chatRoomId);
 
             // สร้างข้อความแจ้งเตือนล่าสุด
@@ -275,7 +275,7 @@ const messageText = `📦 อ้างอิงคำสั่งซื้อ: #
 
                     return (
                         <React.Fragment key={msg.id}>
-                            {/* . 3. แสดงป้ายวันที่คั่นกลางแชท ถ้า showDateDivider เป็นจริง */}
+                            {/* . 3. แสดงป้ายวันที่คั่นกลางแชต ถ้า showDateDivider เป็นจริง */}
                             {showDateDivider && (
                                 <div className="flex justify-center my-6">
                                     <span className="bg-gray-200/60 text-gray-500 text-[11px] px-3 py-1 rounded-full font-bold shadow-sm backdrop-blur-sm">

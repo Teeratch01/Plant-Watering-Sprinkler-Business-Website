@@ -1325,12 +1325,36 @@ function AdminDashboard() {
                                         </h3>
                                         <ResponsiveContainer width="100%" height="85%">
                                             <PieChart>
-                                                <Pie data={locationData.slice(0, 6)} cx="50%" cy="50%" outerRadius={110} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}>
+                                                <Pie 
+                                                    data={locationData.slice(0, 6)} 
+                                                    cx="50%" cy="50%" 
+                                                    outerRadius={110} 
+                                                    dataKey="value" 
+                                                    
+                                                    //1. ดักซ่อนเส้นโยงถ้าค่าน้อยกว่า 3% (0.03)
+                                                    labelLine={(props) => {
+                                                        if (props.percent < 0.03) return null;
+                                                        return <polyline points={props.points.map(p => `${p.x},${p.y}`).join(' ')} stroke="#9ca3af" strokeWidth={1} fill="none" />;
+                                                    }}
+                                                    
+                                                    //2. ดักซ่อนตัวอักษรถ้าค่าน้อยกว่า 3%
+                                                    label={({ name, percent }) => {
+                                                        if (percent < 0.03) return null; 
+                                                        return `${name} ${(percent * 100).toFixed(1)}%`;
+                                                    }}
+                                                    style={{ fontSize: '11px', fontWeight: '500' }}
+                                                >
                                                     {locationData.slice(0, 6).map((entry, index) => (
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
-                                                <RechartsTooltip formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']} />
+                                                <RechartsTooltip 
+                                                    formatter={(val) => viewMode === 'REVENUE' ? [`฿${formatValueDisplay(val)}`, 'ยอดขาย'] : [formatValueDisplay(val), 'จำนวนชิ้น']}
+                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                                                />
+                                                
+                                                {/* 3. เพิ่ม Legend (คำอธิบายสี) ด้านล่างกราฟ */}
+                                                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
