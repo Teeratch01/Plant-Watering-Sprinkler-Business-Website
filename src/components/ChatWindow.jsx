@@ -75,7 +75,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         }
     }
 
-      const getDisplayStatus = (order) => {
+    const getDisplayStatus = (order) => {
         if (order.OrderStatus === 'Payment In Progress') {
             return order.PaymentSlipUrl ? 'รอตรวจสอบสลิปโอนเงิน' : 'รออัปโหลดสลิป';
         }
@@ -97,7 +97,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         const thaiStatus = getDisplayStatus(order);
 
         // สร้างข้อความรูปแบบพิเศษสำหรับออเดอร์
-const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${thaiStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString('th-TH', {
+        const messageText = `📦 อ้างอิงคำสั่งซื้อ: #${order.OrderNumber}\nสถานะ: ${thaiStatus}\nยอดรวม: ฿${Number(order.TotalPrice).toLocaleString('th-TH', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         })}`;
@@ -232,7 +232,7 @@ const messageText = `📦 อ้างอิงคำสั่งซื้อ: #
         }
     };
 
-  
+
 
 
 
@@ -244,14 +244,14 @@ const messageText = `📦 อ้างอิงคำสั่งซื้อ: #
 
 
     return (
-        <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+        <div className="flex flex-col h-full min-h-[500px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
 
             {/* --- พื้นที่แสดงข้อความ --- */}
             <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-[url('https://www.transparenttextures.com/patterns/subtle-grey.png')]">
                 {loading && <p className="text-center text-gray-400 text-sm">กำลังโหลด...</p>}
 
                 {!loading && messages.length === 0 && (
-                    <div className="text-center text-gray-400 mt-10 text-sm">
+                    <div className="flex items-center justify-center h-full min-h-[300px] text-gray-400 text-sm">
                         เริ่มการสนทนาได้เลย
                     </div>
                 )}
