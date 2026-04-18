@@ -280,6 +280,18 @@ function Register() {
               />
             </div>
 
+            <div className="flex items-start gap-3 mt-2">
+              <input 
+                type="checkbox" 
+                id="pdpa-consent" 
+                required 
+                className="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer flex-shrink-0"
+              />
+              <label htmlFor="pdpa-consent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                ฉันได้อ่านและยอมรับ <span className="text-blue-600 underline hover:text-blue-800">เงื่อนไขการให้บริการ</span> และ <span className="text-blue-600 underline hover:text-blue-800">นโยบายความเป็นส่วนตัว (PDPA)</span>
+              </label>
+            </div>
+
             {/* Button */}
             <button type="submit" className="w-full border border-gray-400 text-blue-600 py-2 rounded-full hover:bg-gray-50 transition duration-300 font-medium">
               สมัครสมาชิก
