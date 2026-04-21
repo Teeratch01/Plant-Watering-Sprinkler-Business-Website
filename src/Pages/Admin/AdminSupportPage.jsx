@@ -22,6 +22,7 @@ function AdminSupportPage() {
         return () => unsubscribe();
     }, []);
 
+    // ฟังก์ชันสำหรับส่งอีเมลตอบกลับลูกค้าเมื่อแอดมินตอบคำร้อง โดยจะใช้ EmailJS ในการส่งอีเมล และอัปเดตสถานะคำร้องใน Firebase เป็น 'replied' พร้อมบันทึกข้อความตอบกลับและหัวข้อที่ใช้ในการตอบกลับลงในฐานข้อมูล
     const handleSendReply = async (e) => {
         e.preventDefault();
         if (!replyMessage.trim()) return;

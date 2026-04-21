@@ -18,6 +18,7 @@ function OrderSuccessPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [isUploaded, setIsUploaded] = useState(false);
 
+    // ฟังก์ชันสำหรับจัดการการเปลี่ยนแปลงของไฟล์สลิปที่ผู้ใช้เลือก โดยจะเก็บไฟล์และสร้าง URL จำลองเพื่อแสดงพรีวิวของสลิปนั้น
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -26,6 +27,7 @@ function OrderSuccessPage() {
         }
     };
 
+    // ฟังก์ชันสำหรับอัปโหลดไฟล์สลิปที่ผู้ใช้เลือก
     const handleUploadSlip = async () => {
 
         if (!slipFile) {

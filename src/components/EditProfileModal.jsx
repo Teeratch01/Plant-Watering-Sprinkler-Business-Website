@@ -14,6 +14,10 @@ import { toast } from 'react-toastify';
 
 const InputThaiAddress = CreateInput();
 
+
+// ข้อมูลจังหวัด-อำเภอ-ตำบล สำหรับฟอร์มแก้ไขที่อยู่ (ใช้กับ EditProfileModal.jsx)
+// โดยจะมีการดึงข้อมูลจาก API ของ thai-address-autocomplete-react มาแสดงในรูปแบบ dropdown ให้เลือก
+// เมื่อเลือกแล้วจะอัปเดตค่าในฟอร์มให้ตรงกับที่เลือกโดยอัตโนมัติ
 const ReAuthModal = ({ isOpen, onClose, onConfirm }) => {
     const [password, setPassword] = useState('');
 
@@ -47,8 +51,6 @@ const ReAuthModal = ({ isOpen, onClose, onConfirm }) => {
 
 const EditProfileModal = ({ userId, isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState('general');
-
-
 
     const [formData, setFormData] = useState({
         firstname: '',
@@ -178,7 +180,7 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
         }
     }
 
-
+    // ฟังก์ชันสำหรับจัดการการเปลี่ยนรหัสผ่าน โดยจะมีการตรวจสอบความถูกต้องของรหัสผ่านเก่า และความตรงกันของรหัสผ่านใหม่ก่อนที่จะทำการเปลี่ยนรหัสผ่านจริง
     const handleChangePasswordInit = async () => {
         setPassMsg({ type: '', text: '' });
 
@@ -237,6 +239,8 @@ const EditProfileModal = ({ userId, isOpen, onClose }) => {
         }
     };
 
+
+    // ฟังก์ชันสำหรับจัดการการยืนยันตัวตนใหม่ (Re-authentication) ในกรณีที่ระบบต้องการความปลอดภัยสูงขึ้น เช่น การเปลี่ยนรหัสผ่าน โดยจะมีการตรวจสอบรหัสผ่านปัจจุบันอีกครั้งก่อนที่จะอนุญาตให้เปลี่ยนรหัสผ่านใหม่ได้
     const handleReAuthConfirm = async (currentPassword) => {
         const auth = getAuth();
         const user = auth.currentUser;

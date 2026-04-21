@@ -8,10 +8,6 @@ import { toast } from 'react-toastify';
 import { doc, getDoc } from 'firebase/firestore';
 
 
-
-
-
-
 function Login() {
 
   const [email, setEmail] = useState('');

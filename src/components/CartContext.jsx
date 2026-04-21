@@ -51,15 +51,15 @@ export const CartProvider = ({ children }) => {
             }
         });
 
-        // แถมให้: ถ้าอยากให้มีแจ้งเตือนตอนหยิบใส่ตะกร้าสำเร็จ สามารถใช้บรรทัดล่างนี้ได้ครับ
-        // toast.success("เพิ่มสินค้าลงตะกร้าแล้ว!");
     };
 
+    // ฟังก์ชันสำหรับลบสินค้าจากตะกร้า โดยจะกรองรายการสินค้าในตะกร้าออกตาม ID ที่ได้รับ และแสดงข้อความแจ้งเตือนเมื่อมีการลบสินค้าออกจากตะกร้า
     const removeFromCart = (productId) => {
         setCartItems((prevItems) => prevItems.filter((item) => item.id !== productId));
         toast.error("ลบสินค้าออกจากตะกร้าแล้ว");
     };
 
+    // ฟังก์ชันสำหรับอัปเดตจำนวนสินค้าที่เลือกในตะกร้า โดยจะเพิ่มหรือปรับปรุงรายการสินค้าในตะกร้าตามข้อมูลที่ได้รับ และลบรายการออกถ้าจำนวนเป็น 0 หรือไม่ถูกต้อง
     const updateQuantity = (productId, type) => {
 
         const itemToUpdate = cartItems.find((item) => item.id === productId);
@@ -86,14 +86,17 @@ export const CartProvider = ({ children }) => {
         });
     };
 
+    // ฟังก์ชันสำหรับคำนวณจำนวนสินค้าทั้งหมดในตะกร้า โดยจะรวมจำนวนของแต่ละรายการสินค้าเข้าด้วยกันและส่งกลับเป็นผลลัพธ์
     const getCartCount = () => {
         return cartItems.reduce((total, item) => total + item.quantity, 0);
     };
 
+    // ฟังก์ชันสำหรับคำนวณยอดรวมของสินค้าในตะกร้า
     const getCartTotal = () => {
         return cartItems.reduce((total, item) => total + (item.Price * item.quantity), 0);
     };
 
+    // ฟังก์ชันสำหรับอัปเดตจำนวนสินค้าที่เลือกในตะกร้า โดยจะเพิ่มหรือปรับปรุงรายการสินค้าในตะกร้าตามข้อมูลที่ได้รับ และลบรายการออกถ้าจำนวนเป็น 0 หรือไม่ถูกต้อง
     const updateCartItem = (product, newQuantity) => {
         setCartItems((prevItems) => {
             const existingItem = prevItems.find((item) => item.id === product.id);

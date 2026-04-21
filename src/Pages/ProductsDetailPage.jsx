@@ -77,6 +77,7 @@ function ProductsDetailPage() {
     if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
     if (!product) return <div className="min-h-screen flex items-center justify-center">Product not found</div>;
 
+    // ฟังก์ชันสำหรับแสดงรายละเอียดสินค้า โดยจะแยกบรรทัดใหม่เมื่อเจอ \n และทำการจัดรูปแบบหัวข้อและเนื้อหาให้แตกต่างกัน
     const renderProductDetail = (text) => {
         if (!text) return <p className="text-gray-500">ไม่มีรายละเอียดสินค้า</p>;
 
@@ -116,6 +117,7 @@ function ProductsDetailPage() {
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
+    // ฟังก์ชันสำหรับเพิ่มสินค้าลงในตะกร้า โดยจะใช้ฟังก์ชัน updateCartItem จาก CartContext เพื่ออัปเดตจำนวนสินค้าที่เลือก และแสดงข้อความแจ้งเตือนที่เหมาะสมกับการกระทำของผู้ใช้
     const handleAddToCart = () => {
         if (product) {
             updateCartItem(product, quantity);

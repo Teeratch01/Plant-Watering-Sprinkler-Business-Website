@@ -161,6 +161,7 @@ function ProductsPage() {
 
   }
 
+  // สำหรับการแสดงผลสินค้าในหน้าหลัก จะเช็คว่าผู้ใช้เลือกหมวดหมู่ไหน ถ้าเลือก "All" ก็โชว์ทั้งหมด แต่ถ้าเลือกหมวดหมู่เฉพาะ ก็จะกรองสินค้าที่มี ProductCategory ตรงกับหมวดหมู่นั้นๆ มาแสดง
   const displayedProducts = selectedCategory === "All"
     ? products
     : products.filter(p => p.ProductCategory === selectedCategory);

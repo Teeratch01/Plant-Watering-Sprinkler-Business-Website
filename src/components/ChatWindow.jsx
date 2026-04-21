@@ -24,7 +24,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-
+    // --- 1. ดึงข้อความแชตจาก Firestore แบบเรียลไทม์ ---
     useEffect(() => {
         if (!chatRoomId) return;
 
@@ -49,6 +49,8 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         return () => unsubscribe();
     }, [chatRoomId, currentRole]);
 
+
+    // ฟังก์ชันสำหรับดึงคำสั่งซื้อของลูกค้า
     const fetchMyOrders = async () => {
         if (currentRole !== 'customer') return;
 
@@ -75,6 +77,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         }
     }
 
+    // ฟังก์ชันสำหรับแปลงสถานะคำสั่งซื้อเป็นข้อความที่อ่านง่าย
     const getDisplayStatus = (order) => {
         if (order.OrderStatus === 'Payment In Progress') {
             return order.PaymentSlipUrl ? 'รอตรวจสอบสลิปโอนเงิน' : 'รออัปโหลดสลิป';
@@ -122,6 +125,8 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
             toast.error("เกิดข้อผิดพลาดในการส่งข้อมูลออเดอร์");
         }
     };
+
+    // ฟังก์ชันสำหรับจัดการการเลือกไฟล์รูปภาพ
     const handleImageSelect = (e) => {
         const files = e.target.files[0];
         if (files) {
@@ -134,6 +139,7 @@ const ChatWindow = ({ chatRoomId, currentRole, customerName, initialMessage = ''
         }
     }
 
+    // ฟังก์ชันสำหรับลบรูปภาพ
     const removeImage = () => {
         setImageFiles(null);
         setImagePreview(null);

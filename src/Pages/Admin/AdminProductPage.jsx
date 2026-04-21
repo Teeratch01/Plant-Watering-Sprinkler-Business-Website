@@ -113,6 +113,7 @@ function AdminProductPage() {
     const isManager = currentUser?.role === 'adminManager';
     const categories = ['All', ...new Set(products.map(p => p.ProductCategory).filter(Boolean))];
 
+    // ฟังก์ชันสำหรับจัดการตะกร้าสินค้า (ใช้ในส่วนของ Modal ดูรายละเอียดคำขอเพิ่มสินค้า)
     const openModal = (type, product = null, request = null) => {
         setOpenDropdownId(null);
         if (product) {
@@ -175,6 +176,7 @@ function AdminProductPage() {
         return imageUrls;
     }
 
+    // ฟังก์ชันสำหรับส่งคำขอแก้ไขข้อมูลสินค้า (หรือเพิ่มสินค้าใหม่) โดยจะตรวจสอบประเภทของคำขอและส่งข้อมูลที่จำเป็นไปยัง Firebase เพื่อรอการอนุมัติจากผู้จัดการ
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -299,6 +301,7 @@ function AdminProductPage() {
         }
     }
 
+    // ฟังก์ชันสำหรับกรองและจัดเรียงสินค้าตามคำค้นหา หมวดหมู่ และจำนวนสต็อก เพื่อให้แอดมินสามารถดูสินค้าที่ต้องการได้ง่ายขึ้น
     const filteredProducts = products.filter(product => {
         const matchesSearch = product.ProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             product.id?.includes(searchTerm);
@@ -307,6 +310,7 @@ function AdminProductPage() {
         return matchesSearch && matchesCategory;
     });
 
+    // จัดเรียงสินค้าโดยให้สินค้าที่มีสต็อกน้อยกว่า 5 ชิ้นแสดงก่อน และสินค้าที่หมดสต็อกแสดงท้ายสุด เพื่อให้แอดมินเห็นสินค้าที่ต้องรีบจัดการได้ง่ายขึ้น
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         const stockA = Number(a.Stock || 0);
         const stockB = Number(b.Stock || 0);
@@ -327,6 +331,7 @@ function AdminProductPage() {
         return a.ProductName?.localeCompare(b.ProductName || '') || 0;
     });
 
+    // ฟังก์ชันสำหรับจัดการการเลือกหลายค่าในช่อง AreaType และ PlantType โดยจะเพิ่มหรือลบค่าจากอาร์เรย์ใน formData ตามการคลิกของแอดมิน
     const handleCheckboxChange = (field, value) => {
         setFormData(prev => {
             const currentArray = prev[field] || [];
@@ -338,6 +343,7 @@ function AdminProductPage() {
         });
     };
 
+    // ฟังก์ชันสำหรับอนุมัติคำขอแก้ไขข้อมูลสินค้า โดยจะตรวจสอบประเภทของคำขอและอัปเดตข้อมูลใน Firebase ตามคำขอที่ได้รับการอนุมัติ พร้อมทั้งบันทึกประวัติการเปลี่ยนแปลงสต็อกถ้าเป็นคำขอแก้ไขสต็อก
     const handleApproveRequest = async (request) => {
         try {
             if (request.type === 'PRODUCT_ADD') {
@@ -380,6 +386,7 @@ function AdminProductPage() {
         }
     }
 
+    // ฟังก์ชันสำหรับปฏิเสธคำขอแก้ไขข้อมูลสินค้า โดยจะอัปเดตสถานะคำขอเป็น REJECTED ใน Firebase และไม่ทำการเปลี่ยนแปลงข้อมูลสินค้าในคลังสินค้า
     const handleRejectRequest = async (requestId) => {
         if (window.confirm('คุณแน่ใจหรือไม่ว่าต้องการปฏิเสธคำขอรายการนี้?')) {
             try {
@@ -395,6 +402,8 @@ function AdminProductPage() {
         }
     }
 
+
+    // ฟังก์ชันสำหรับดึงรายละเอียดของคำขอแก้ไขข้อมูลสินค้าแต่ละประเภท เพื่อแสดงใน Modal รายละเอียดคำขอ โดยจะแสดงข้อมูลที่เกี่ยวข้องกับคำขอนั้นๆ พร้อมทั้งเปรียบเทียบกับข้อมูลเดิมในกรณีที่เป็นคำขอแก้ไขข้อมูลสินค้า
     const getRequestDetails = (req) => {
 
         const originalProduct = products.find(p => p.id === req.targetProductId);

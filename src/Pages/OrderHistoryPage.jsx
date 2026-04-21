@@ -46,6 +46,7 @@ const CountdownTimer = ({ orderDate, onExpire }) => {
     );
 };
 
+// Component สำหรับแสดงแต่ละคำสั่งซื้อในรูปแบบการ์ด
 const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus }) => {
     const navigate = useNavigate();
     const [isExpired, setIsExpired] = useState(false);
@@ -143,6 +144,7 @@ const OrderCardItem = ({ order, getStatusColor, getStatusIcon, getDisplayStatus 
     );
 }
 
+
 function OrderHistoryPage() {
     const [orders, setOrders] = useState([]);
     const [user, setUser] = useState(null);
@@ -167,6 +169,7 @@ function OrderHistoryPage() {
     }
         , [navigate]);
 
+    // ฟังก์ชันดึงคำสั่งซื้อของผู้ใช้จาก Firestore โดยใช้ UserID เป็นตัวกรอง และจัดเรียงคำสั่งซื้อล่าสุดขึ้นก่อน
     const fetchOrders = async (userId) => {
         try {
             const ordersRef = collection(db, 'orders');

@@ -17,7 +17,7 @@ import geoUrlData from '../../assets/Geo/thailand.json';
 import { toast } from 'react-toastify';
 
 
-
+// แผนที่จังหวัดภาษาไทย -> อังกฤษ สำหรับแมปปิ้งข้อมูล
 const provinceMap = {
     "กรุงเทพมหานคร": "Bangkok Metropolis",
     "กระบี่": "Krabi",
@@ -147,6 +147,7 @@ function AdminDashboard() {
 
     const COLORS = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1'];
     
+    // ดึงข้อมูลจาก Firestore ทั้ง Orders, Products และ Payments
     useEffect(() => {
         const q = query(
             collection(db, "orders"),
@@ -222,10 +223,12 @@ function AdminDashboard() {
     }).filter(Boolean); // เอาบิลที่ไม่ผ่านเงื่อนไข (null) ออก
 
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูลยอดขายรายเดือนและจำนวนชิ้นที่ขายได้
     const getMonthlySalesData = () => {
         const sortedData = {};
         const monthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
+        // วนลูปผ่านออเดอร์ที่ผ่านการกรองแล้ว เพื่อจัดกลุ่มตามเดือน-ปี และคำนวณยอดขายรวมและจำนวนชิ้นรวมในแต่ละเดือน
         filteredOrders.forEach(order => {
             let date;
             if (order.OrderDate && typeof order.OrderDate.toDate === 'function') {
@@ -256,6 +259,7 @@ function AdminDashboard() {
             sortedData[sortKey].totalQuantity += orderQty;
         });
 
+        // เรียงข้อมูลตามลำดับ
         const sortedKeys = Object.keys(sortedData).sort();
         return sortedKeys.map((key, index) => {
             const currentVal = viewMode === 'REVENUE' ? sortedData[key].totalRevenue : sortedData[key].totalQuantity;
@@ -280,6 +284,7 @@ function AdminDashboard() {
         });
     };
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูลสินค้าขายดี (Top Products)
     const getTopProducts = () => {
         const productCount = {};
         filteredOrders.forEach(order => {
@@ -307,6 +312,7 @@ function AdminDashboard() {
     };
 
 
+// ฟังก์ชันสำหรับจัดเรียงข้อมูลยอดขายตามจังหวัด
     const getLocationData = () => {
         const locationCount = {};
         filteredOrders.forEach(order => {
@@ -334,6 +340,7 @@ function AdminDashboard() {
             .sort((a, b) => b.value - a.value);
     };
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูลยอดขายตามจังหวัด (รายละเอียดเมื่อคลิกที่จังหวัด)
     const getProvinceDetailData = (provinceName) => {
         if (!provinceName) return { categories: [], products: [] };
 
@@ -376,11 +383,14 @@ function AdminDashboard() {
     const locationData = getLocationData();
 
     const maxLocationValue = Math.max(...locationData.map(d => d.value), 0);
+
+    // สร้างสเกลสีสำหรับแผนที่ โดยใช้ค่า locationData เพื่อกำหนดช่วงของสี
     const colorScale = scaleLinear()
         .domain([0, maxLocationValue === 0 ? 1 : maxLocationValue])
         .range(["#EFF6FF", "#1D4ED8"]);
 
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูลสินค้าขายดี (Top Products) เปรียบเทียบกับเดือนก่อนหน้า
     const getProductGrowthData = () => {
         if (filteredOrders.length === 0) return [];
 
@@ -426,6 +436,7 @@ function AdminDashboard() {
             }
         });
 
+        // หาสินค้า 5 อันดับแรกของเดือนปัจจุบัน
         const topCurrent = Object.keys(currentData)
             .sort((a, b) => currentData[b] - currentData[a])
             .slice(0, 5);
@@ -452,6 +463,7 @@ function AdminDashboard() {
 
     const productGrowth = getProductGrowthData();
 
+    // ฟังก์ชันสำหรับคำนวณ KPI การเติบโตของยอดขายและจำนวนชิ้นเปรียบเทียบกับเดือนก่อนหน้า
     const getOverallGrowthKPI = () => {
         if (filteredOrders.length === 0) return { revenueGrowth: 0, qtyGrowth: 0, currentRevenue: 0, currentQty: 0 };
 
@@ -519,6 +531,7 @@ function AdminDashboard() {
     const growthKPIs = getOverallGrowthKPI();
 
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูล Scatter Plot (ยอดขายตามประเภทพื้นที่และประเภทโรงงาน)
     const getScatterData = () => {
         if (orders.length === 0 || products.length === 0) return [];
 
@@ -555,6 +568,7 @@ function AdminDashboard() {
 
     const scatterData = getScatterData();
 
+    // ฟังก์ชันสำหรับจัดเรียงข้อมูลยอดขายตามหมวดหมู่สินค้า (รายละเอียดเมื่อคลิกที่จังหวัด)
     const getCategoryData = () => {
         if (orders.length === 0 || products.length === 0) return [];
         const categoryCount = {};
@@ -590,6 +604,7 @@ function AdminDashboard() {
     const totalRevenue = filteredOrders.reduce((sum, order) => sum + (Number(order.TotalPrice) || 0), 0);
     const totalOrders = filteredOrders.length;
 
+    // ฟังก์ชันสำหรับดาวน์โหลดข้อมูลเป็นไฟล์ CSV
     const downloadCSV = (dataArray, filename) => {
         if (dataArray.length === 0) return alert("ไม่มีข้อมูลสำหรับ Export");
 
@@ -619,6 +634,7 @@ function AdminDashboard() {
         document.body.removeChild(link);
     }
 
+    // ฟังก์ชันสำหรับดาวน์โหลดข้อมูลออเดอร์เป็นไฟล์ CSV
     const exportOrders = async () => {
         try {
             const querySnapshot = await getDocs(collection(db, "orders"));
@@ -653,6 +669,7 @@ function AdminDashboard() {
         }
     };
 
+    // ฟังก์ชันสำหรับดาวน์โหลดข้อมูลสินค้าเป็นไฟล์ CSV
     const exportProducts = () => {
         const formattedData = products.map(product => {
             return {
@@ -692,6 +709,7 @@ function AdminDashboard() {
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
             <AdminNavbar />
 
+            {/* Tooltip สำหรับแผนที่จังหวัด (แสดงเมื่อ hover) */}
             {tooltipContent && activeTab === 'locations' && (
                 <div className="fixed bg-gray-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full mt-[-10px]"
                     style={{ left: tooltipContent.x, top: tooltipContent.y }}>
@@ -814,7 +832,7 @@ function AdminDashboard() {
                             )}
                         </div>
 
-                        {/* กล่องเลือกวันที่ (ของเดิม) */}
+                        {/* กล่องเลือกวันที่ */}
                         <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
                             <div className="flex flex-col">
                                 <span className="text-[10px] text-gray-500 font-bold px-1">ตั้งแต่วันที่</span>
@@ -981,6 +999,7 @@ function AdminDashboard() {
 
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
 
+                                    {/* KPI การเติบโตของยอดขายและจำนวนชิ้นเปรียบเทียบกับเดือนก่อนหน้า */}
                                     <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
                                         <div className="bg-white px-5 py-3 rounded-lg shadow-sm border border-gray-200 flex items-center gap-4 flex-1">
                                             <div className={`p-2.5 rounded-full ${growthKPIs.revenueGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
@@ -1029,8 +1048,10 @@ function AdminDashboard() {
                                     </div>
                                 </div>
 
+
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <div className="h-[350px]">
+                                        {/* กราฟแท่งแสดง Top 5 สินค้าขายดี โดยสามารถสลับดูได้ทั้งยอดขายและจำนวนชิ้นที่ขายได้ */}
                                         <h3 className="text-sm font-bold text-gray-700 mb-4 text-center">
                                             Top 5 สินค้าขายดี {viewMode === 'REVENUE' ? '(ตามยอดขาย)' : '(ตามจำนวนชิ้น)'}
                                         </h3>
@@ -1067,6 +1088,8 @@ function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
 
+
+                                    {/* กราฟเส้นแสดงแนวโน้มยอดขายและจำนวนชิ้นที่ขายได้รายเดือน โดยสามารถสลับดูได้ทั้งยอดขายและจำนวนชิ้นที่ขายได้ */}
                                     <div className="h-[400px]">
                                         <div className="h-[350px] w-full">
                                             <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center justify-center gap-2">
@@ -1094,6 +1117,8 @@ function AdminDashboard() {
 
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-8">
 
+
+                                    {/* กราฟแท่งแสดงอัตราการเติบโตของยอดขายและจำนวนชิ้นที่ขายได้ของ Top 5 สินค้า โดยสามารถสลับดูได้ทั้งยอดขายและจำนวนชิ้นที่ขายได้ */}
                                     <div className="h-[400px] bg-gray-50/50 p-6 rounded-xl border border-gray-100">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <TrendingUp size={16} className="text-emerald-600" />
@@ -1136,6 +1161,7 @@ function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
 
+                                    {/* กราฟเส้นแสดงแนวโน้มการเติบโตของยอดขายและจำนวนชิ้นที่ขายได้ของ Top 5 สินค้า โดยสามารถสลับดูได้ทั้งยอดขายและจำนวนชิ้นที่ขายได้ */}
                                     <div className="h-[400px] bg-gray-50/50 p-6 rounded-xl border border-gray-100">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <Activity size={16} className="text-purple-600" />
@@ -1174,6 +1200,7 @@ function AdminDashboard() {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
+                                    {/* กราฟโดนัทแสดงสัดส่วนยอดขายและจำนวนชิ้นที่ขายได้แบ่งตามหมวดหมู่สินค้า โดยสามารถสลับดูได้ทั้งยอดขายและจำนวนชิ้นที่ขายได้ */}
                                     <div className="h-[450px] bg-gray-50/50 p-6 rounded-xl border border-gray-100 col-span-1">
                                         <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2">
                                             <Package size={16} className="text-orange-600" />
@@ -1222,7 +1249,9 @@ function AdminDashboard() {
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </div>
+                                    
 
+                                    {/* กราฟกระจายแสดงความสัมพันธ์ระหว่างประเภทพื้นที่และประเภทพืช โดยขนาดของจุดแสดงถึงยอดขายหรือจำนวนชิ้นที่ขายได้ */}
                                     <div className="h-[450px] bg-gray-50/50 p-6 rounded-xl border border-gray-100 lg:col-span-2">
                                         <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <Map size={16} className="text-blue-600" />
@@ -1317,8 +1346,11 @@ function AdminDashboard() {
                                     </div>
                                 </div>
 
+
+                                
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center h-[450px]">
 
+                                    {/* กราฟโดนัทแสดงสัดส่วนยอดขายและจำนวนชิ้นที่ขายได้แบ่งตามจังหวัด โดยแสดงเฉพาะ 6 จังหวัดที่มียอดขายหรือจำนวนชิ้นสูงสุด และมีการดักซ่อนเส้นโยงและตัวอักษรของจังหวัดที่มีสัดส่วนน้อยกว่า 3% เพื่อความชัดเจน */}
                                     <div className="w-full h-full">
                                         <h3 className="text-sm font-bold text-gray-700 mb-4 text-center bg-gray-50 py-2 rounded-lg border border-gray-100">
                                             Top 6 จังหวัดที่มียอด{viewMode === 'REVENUE' ? 'ขายสูงสุด' : 'สั่งซื้อเยอะที่สุด'}
@@ -1359,6 +1391,7 @@ function AdminDashboard() {
                                         </ResponsiveContainer>
                                     </div>
 
+                                    {/* กราฟแผนที่ประเทศไทยแสดงการกระจายตัวของยอดขายและจำนวนชิ้นที่ขายได้ในแต่ละจังหวัด โดยใช้สีเข้มแสดงถึงยอดขายหรือจำนวนชิ้นที่สูง และสีอ่อนแสดงถึงยอดขายหรือจำนวนชิ้นที่ต่ำ และมีการแสดง tooltip เมื่อ hover ที่แต่ละจังหวัดเพื่อแสดงข้อมูลยอดขายหรือจำนวนชิ้นที่ขายได้ของจังหวัดนั้นๆ */}
                                     <div className="w-full h-full border-l border-gray-100 pl-8 relative">
                                         <h3 className="text-sm font-bold text-gray-700 mb-2 text-center bg-gray-50 py-2 rounded-lg border border-gray-100">
                                             การกระจายตัวของ{viewMode === 'REVENUE' ? 'ยอดขาย' : 'จำนวนชิ้น'}ทั่วประเทศ

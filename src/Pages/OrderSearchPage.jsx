@@ -17,6 +17,8 @@ function OrderSearchPage() {
     const [payment, setPayment] = useState(null);
     const [searched, setSearched] = useState(false);
 
+
+    // ฟังก์ชันสำหรับค้นหาคำสั่งซื้อใน Firestore โดยใช้เลขคำสั่งซื้อเป็นตัวกรอง และอัปเดตสถานะการโหลดและผลลัพธ์ที่ได้
     const fetchOrderData = async (orderNumber) => {
         if (!orderNumber) return;
 

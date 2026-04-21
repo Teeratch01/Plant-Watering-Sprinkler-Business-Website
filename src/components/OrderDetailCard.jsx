@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// CountdownTimer Component สำหรับนับถอยหลังเวลา 24 ชั่วโมง
 const CountdownTimer = ({ orderDate, onExpire }) => {
     const [timeLeft, setTimeLeft] = useState('');
     const [expired, setExpired] = useState(false);
@@ -49,9 +50,7 @@ const CountdownTimer = ({ orderDate, onExpire }) => {
     );
 };
 
-
-
-
+// Main Component: OrderDetailCard
 const OrderDetailCard = ({ order, payment }) => {
 
     const [isExpired, setIsExpired] = useState(false);

@@ -88,6 +88,7 @@ function AdminOrderPage() {
         return () => unsubscribe();
     }, []);
 
+    // ฟังก์ชันสำหรับเปิด Modal ดูรายละเอียดคำสั่งซื้อและสลิปการโอน โดยจะโหลดข้อมูลการชำระเงินจาก Firebase มาแสดงใน Modal ด้วย
     const handleOpenViewModal = async (order) => {
         setViewModal({ isOpen: true, order: order });
         setSelectedPayment(null);
@@ -112,6 +113,7 @@ function AdminOrderPage() {
     };
 
 
+    // ฟังก์ชันสำหรับเปลี่ยนสถานะคำสั่งซื้อ โดยถ้าสถานะใหม่เป็น Cancelled จะเปิด Modal ให้กรอกเหตุผลการยกเลิกก่อนที่จะอัปเดตสถานะจริง
     const handleStatusChange = async (orderId, newStatus) => {
         if (newStatus === 'Cancelled') {
             setCancelModal({ isOpen: true, orderId: orderId, reason: '', customReason: '' });
@@ -136,6 +138,7 @@ function AdminOrderPage() {
         }
     };
 
+    // ฟังก์ชันสำหรับยืนยันการยกเลิกคำสั่งซื้อ โดยจะอัปเดตสถานะเป็น Cancelled และบันทึกเหตุผลการยกเลิกลงใน Firebase
     const confirmCancellation = async () => {
         if (!cancelModal.reason.trim()) {
             toast.error('กรุณาระบุเหตุผลการยกเลิก');
@@ -165,6 +168,7 @@ function AdminOrderPage() {
         }
     };
 
+    // ฟังก์ชันสำหรับกำหนดสไตล์ของสถานะคำสั่งซื้อแต่ละสถานะ เพื่อให้แอดมินสามารถมองเห็นได้ง่ายขึ้น
     const getStatusStyle = (status) => {
         switch (status) {
             case 'Payment Success': return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -224,6 +228,7 @@ function AdminOrderPage() {
         return true;
     });
 
+    // ฟังก์ชันสำหรับปฏิเสธสลิปการโอน โดยจะส่งอีเมลแจ้งลูกค้าให้ทราบว่าต้องอัปโหลดสลิปใหม่ และอัปเดตข้อมูลใน Firebase ว่าสลิปถูกปฏิเสธแล้ว (เคลียร์ค่า PaymentSlipUrl)
     const handleRejectSlip = async (order) => {
         if (!order.CustomerEmail) {
             toast.error('ไม่สามารถส่งอีเมลได้ เนื่องจากลูกค้าไม่ได้ระบุอีเมลไว้');

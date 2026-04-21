@@ -36,7 +36,7 @@ const AdminNavbar = () => {
                                 let adminReq = 0;
                                 let productReq = 0;
 
-                                // 🌟 วนลูปเช็คเอกสารแต่ละตัวว่ามาจากระบบไหน
+                                // วนลูปเช็คเอกสารแต่ละตัวว่ามาจากระบบไหน
                                 snapshot.docs.forEach(doc => {
                                     const reqData = doc.data();
                                     // ถ้า type ขึ้นต้นด้วย PRODUCT_ ให้นับเป็นของสินค้า
@@ -266,7 +266,7 @@ const AdminNavbar = () => {
                                                     {sub.name}
                                                 </div>
 
-                                                {/* 🌟 6. ตัวเลขบอกจำนวนใน Dropdown 🌟 */}
+                                                {/*  6. ตัวเลขบอกจำนวนใน Dropdown  */}
                                                 {sub.badgeCount > 0 && (
                                                     <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-fade-in-up">
                                                         {sub.badgeCount}

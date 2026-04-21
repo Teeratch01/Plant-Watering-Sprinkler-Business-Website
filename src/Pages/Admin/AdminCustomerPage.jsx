@@ -47,6 +47,7 @@ function AdminCustomerPage() {
         return () => unsubscribe();
     }, []);
 
+    // ฟิลเตอร์ลูกค้าตามคำค้นหา
     const filteredCustomers = customers.filter(c => {
         const search = searchTerm.toLowerCase();
         return (
@@ -58,6 +59,7 @@ function AdminCustomerPage() {
     }
     );
 
+    // ฟังก์ชันสำหรับเปิด Modal แก้ไขข้อมูล
     const openEditModal = (customer) => {
         setSelectedCustomer(customer);
         setFormData({
@@ -79,6 +81,7 @@ function AdminCustomerPage() {
         setSelectedCustomer(null);
     }
 
+    // ฟังก์ชันสำหรับบันทึกข้อมูลที่แก้ไข
     const handleUpdateCustomer = async (e) => {
         e.preventDefault();
         try {
@@ -104,6 +107,7 @@ function AdminCustomerPage() {
         }
     };
 
+    // ฟังก์ชันสำหรับจัดการแสดงที่อยู่
     const formatAddress = (addressObj) => {
         if (!addressObj) return <span className="text-gray-400">ไม่ได้ระบุที่อยู่</span>;
         const { address, sub_district, district, province, zipcode } = addressObj;
@@ -111,6 +115,7 @@ function AdminCustomerPage() {
         return parts.length > 0 ? parts.join(' ') : <span className="text-gray-400">ไม่ได้ระบุที่อยู่</span>;
     };
 
+    // ฟังก์ชันสำหรับส่งอีเมลรีเซ็ตรหัสผ่าน
     const handleSendPasswordReset = async () => {
         if (!selectedCustomer?.email) {
             toast.error('ไม่สามารถส่งอีเมลรีเซ็ตรหัสผ่านได้ เนื่องจากไม่มีอีเมลของลูกค้า');

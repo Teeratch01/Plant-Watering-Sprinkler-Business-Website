@@ -7,9 +7,9 @@ import AdminNavbar from '../../components/Admin/AdminNavbar';
 
 function AdminChatPage() {
     const [chatRooms, setChatRooms] = useState([]);
-    const [selectedChatId, setSelectedChatId] = useState(null); // เก็บแค่ ID ก็พอ
+    const [selectedChatId, setSelectedChatId] = useState(null); // เก็บแค่ ID 
 
-    // ดึงรายชื่อห้องแชต
+    // ดึงรายชื่อห้องแชต    
     useEffect(() => {
         const q = query(collection(db, "chats"), orderBy("lastMessageAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {

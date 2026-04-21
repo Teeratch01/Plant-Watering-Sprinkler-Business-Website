@@ -15,7 +15,6 @@ function CartPage() {
 
             <div className="container mx-auto px-4 py-12 max-w-6xl">
 
-                {/* Header: เปลี่ยน Font เป็น Sans และเอาขีดเส้นใต้ออกเพื่อให้ดูโมเดิร์นขึ้น */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800">
                         ตะกร้าสินค้าของคุณ
@@ -29,7 +28,7 @@ function CartPage() {
                     <div className="flex flex-col lg:flex-row gap-8 items-start">
 
                         {/* --- Left Column: Cart Items List --- */}
-                        {/* ปรับดีไซน์ให้เหมือนหน้า Detail: พื้นขาว, มุมมน, เงาบางๆ */}
+
                         <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             {/* Header ของตาราง (ซ่อนในมือถือ) */}
                             <div className="hidden md:flex bg-gray-50 border-b border-gray-200 px-6 py-4 text-sm font-semibold text-gray-600">
@@ -117,7 +116,6 @@ function CartPage() {
                         </div>
 
                         {/* --- Right Column: Order Summary --- */}
-                        {/* ปรับดีไซน์กรอบให้เหมือนหน้า Detail */}
                         <div className="w-full lg:w-96 bg-white p-6 rounded-xl shadow-sm border border-gray-200 sticky top-24">
                             <h2 className="text-xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">สรุปคำสั่งซื้อ</h2>
 
@@ -146,7 +144,7 @@ function CartPage() {
                                 </div>
                             </div>
 
-                            {/* Proceed Button: ดีไซน์เดียวกับปุ่ม "ซื้อเลย" หน้า Detail */}
+                            {/* Proceed Button*/}
                             <button
                                 className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition transform hover:-translate-y-0.5 active:scale-95"
                                 onClick={() => navigate('/checkout')}

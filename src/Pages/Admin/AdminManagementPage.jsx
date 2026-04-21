@@ -86,6 +86,7 @@ function AdminManagementPage() {
 
     }, [currentUser])
 
+    // --- ฟังก์ชันจัดการคำขอและผู้ดูแลระบบ ---
     const handleAddAdmin = async (e) => {
         e.preventDefault();
 
@@ -134,6 +135,7 @@ function AdminManagementPage() {
         }
     }
 
+    // ฟังก์ชันสำหรับเปลี่ยนสถานะ Active/Inactive ของผู้ดูแลระบบ โดย Manager สามารถเปลี่ยนได้เลย แต่ Employee ต้องส่งคำขอไปให้ Manager อนุมัติ
     const handleStatusChange = async (targetUserId, targetUserName, currentStatus, targetRole) => {
         const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
         const isManager = currentUser?.role === 'adminManager';
@@ -167,6 +169,7 @@ function AdminManagementPage() {
         }
     }
 
+    // ฟังก์ชันสำหรับอนุมัติคำขอ โดย Manager จะอนุมัติได้ทั้งคำขอเพิ่มผู้ดูแลระบบใหม่ และคำขอเปลี่ยนสถานะผู้ดูแลระบบ
     const handleApproveRequest = async (request) => {
         try {
             if (request.type === 'ADD_USER') {
@@ -190,6 +193,7 @@ function AdminManagementPage() {
         }
     }
 
+    // ฟังก์ชันสำหรับปฏิเสธคำขอ
     const handleRejectRequest = async (requestId) => {
         try {
             await updateDoc(doc(db, 'admin_requests', requestId), { status: 'REJECTED', actedAt: serverTimestamp() });
@@ -200,6 +204,7 @@ function AdminManagementPage() {
         }
     }
 
+    // --- ฟังก์ชันสำหรับกรองรายชื่อผู้ดูแลระบบตามคำค้นหา (ชื่อหรืออีเมล) ---
     const filteredAdmins = admins.filter(admin =>
         admin.firstname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         admin.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -207,6 +212,7 @@ function AdminManagementPage() {
 
     const isManager = currentUser?.role === 'adminManager';
 
+    // ฟังก์ชันสำหรับฟอร์แมตวันที่ให้เป็นรูปแบบที่อ่านง่าย (ใช้ในส่วนคำขอ)
     const formatTimestamp = (timestamp) => {
         if (!timestamp) return '-';
         if (typeof timestamp.toDate === 'function') {

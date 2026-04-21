@@ -212,7 +212,7 @@ function ContactUsPage() {
                                     <h2 className="text-xl font-bold text-gray-900 mb-1">ติดต่อเรา</h2>
                                     <p className="text-sm text-gray-500">กรุณากรอกข้อมูลไว้และทางเราจะติดต่อกลับหาคุณโดยเร็วที่สุด</p>
                                 </div>
-                                {/* ย้ายปุ่มแชตมาไว้ตรงนี้เพื่อให้ลูกค้ามีทางเลือก */}
+                            
                                 <button
                                     onClick={handleChatClick}
                                     className="hidden md:flex bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2 px-4 rounded-lg transition items-center gap-2 text-sm"
