@@ -21,6 +21,7 @@ function AdminProductPage() {
 
     const [requests, setRequests] = useState([]);
     const [activeTab, setActiveTab] = useState('PRODUCTS');
+    const [crossSellSearch, setCrossSellSearch] = useState('');
 
     const [modalState, setModalState] = useState({
         type: null,
@@ -34,7 +35,7 @@ function AdminProductPage() {
         ProductDetail: '', AreaType: [], PlantType: [], Pressure: '',
         Stock: 0, YoutubeURL: '-', ProductStatus: 'Active', MinArea: '',
         MaxArea: '',
-        FlowRate: ''
+        FlowRate: '', CrossSellProducts: []
     });
 
     const handleChange = (e) => {
@@ -146,7 +147,8 @@ function AdminProductPage() {
                 MinArea: product.MinArea ?? '',
                 MaxArea: product.MaxArea ?? '',
                 FlowRate: product.FlowRate ?? '',
-                Pressure: product.Pressure ?? ''
+                Pressure: product.Pressure ?? '',
+                CrossSellProducts: Array.isArray(product.CrossSellProducts) ? product.CrossSellProducts : []
             });
 
             if (product.ProductPic) {
@@ -161,7 +163,7 @@ function AdminProductPage() {
                 Stock: 0, ReasonSelect: '', ReasonDetail: '', YoutubeURL: '-', ProductStatus: 'Active',
 
                 // 🌟 เซ็ตค่าเริ่มต้นให้เป็นค่าว่าง เวลาเปิดฟอร์มเพื่อ "เพิ่มสินค้าใหม่"
-                MinArea: '', MaxArea: '', FlowRate: '', Pressure: ''
+                MinArea: '', MaxArea: '', FlowRate: '', Pressure: '', CrossSellProducts: []
             });
             setImageFiles([]);
             setImagePreviews([]);
@@ -228,6 +230,7 @@ function AdminProductPage() {
                     MaxArea: parsedMaxArea,
                     FlowRate: parsedFlowRate,
                     Pressure: parsedPressure,
+                    CrossSellProducts: formData.CrossSellProducts || []
                 }
                 await updateDoc(doc(db, 'products', selectedProduct.id), updateData);
                 toast.success('แก้ไขข้อมูลสินค้าสำเร็จ');
@@ -273,6 +276,7 @@ function AdminProductPage() {
                     MaxArea: parsedMaxArea,
                     FlowRate: parsedFlowRate,
                     Pressure: parsedPressure,
+                    CrossSellProducts: formData.CrossSellProducts || []
                 };
             }
             else if (type === 'PRICE') {
@@ -1158,6 +1162,88 @@ function AdminProductPage() {
                                             />
                                         </div>
                                     )}
+
+                                    {/* --- 🌟 ส่วนเลือกสินค้า Cross-Sell (พร้อมรูปภาพและช่องค้นหา) --- */}
+                                    <div className="md:col-span-2 mt-4 pt-4 border-t border-gray-100">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-2">
+                                            <label className="text-sm font-bold text-gray-700">
+                                                สินค้าแนะนำให้ซื้อคู่กัน (Cross-Sell)
+                                                <span className="text-xs font-normal text-gray-400 ml-2">(เลือกได้หลายรายการ)</span>
+                                            </label>
+
+                                            {/* ช่องค้นหาภายใน Section */}
+                                            <div className="relative w-full md:w-64">
+                                                <input
+                                                    type="text"
+                                                    placeholder="ค้นหาชื่อสินค้าเพื่อจับคู่..."
+                                                    value={crossSellSearch}
+                                                    onChange={(e) => setCrossSellSearch(e.target.value)}
+                                                    className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                                                />
+                                                <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 max-h-60 overflow-y-auto custom-scrollbar shadow-inner">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                {products
+                                                    .filter(p => p.id !== modalState.selectedProduct?.id) // ซ่อนสินค้าตัวเอง
+                                                    .filter(p => p.ProductName.toLowerCase().includes(crossSellSearch.toLowerCase())) // กรองตามคำค้นหา
+                                                    .map(p => (
+                                                        <label
+                                                            key={p.id}
+                                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer group
+                                                                ${formData.CrossSellProducts?.includes(p.id)
+                                                                    ? 'bg-blue-50 border-blue-200'
+                                                                    : 'bg-white border-transparent hover:border-gray-300'}`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                                                checked={formData.CrossSellProducts?.includes(p.id)}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        CrossSellProducts: checked
+                                                                            ? [...(prev.CrossSellProducts || []), p.id]
+                                                                            : (prev.CrossSellProducts || []).filter(id => id !== p.id)
+                                                                    }));
+                                                                }}
+                                                            />
+
+                                                            {/* รูปภาพสินค้าจิ๋ว */}
+                                                            <div className="w-10 h-10 rounded border border-gray-200 overflow-hidden bg-gray-100 shrink-0">
+                                                                <img
+                                                                    src={Array.isArray(p.ProductPic) ? p.ProductPic[0] : (p.ProductPic || 'https://placehold.co/100')}
+                                                                    alt={p.ProductName}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="text-xs font-bold text-gray-800 truncate">{p.ProductName}</span>
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    ฿{Number(p.Price).toLocaleString()} | {p.ProductCategory}
+                                                                </span>
+                                                            </div>
+                                                        </label>
+                                                    ))
+                                                }
+                                                {products.length <= 1 && (
+                                                    <p className="text-xs text-gray-400 col-span-2 text-center py-4">ไม่มีสินค้าอื่นให้เลือก</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* ตัวนับรายการที่เลือก */}
+                                        <div className="mt-2 text-right">
+                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                                                เลือกไว้แล้ว {formData.CrossSellProducts?.length || 0} รายการ
+                                            </span>
+                                        </div>
+                                    </div>
+
                                 </>
                             )}
 
@@ -1223,6 +1309,8 @@ function AdminProductPage() {
                                     )}
                                 </div>
                             )}
+
+
 
                             {!isManager && !['INFO', 'IMAGE'].includes(modalState.type) && (
                                 <div className="bg-orange-50 text-orange-700 p-3 rounded-lg text-xs font-medium flex items-start gap-2 border border-orange-100 mt-4">
