@@ -8,8 +8,6 @@ const AddToCartModal = ({ product, isOpen, onClose }) => {
     const [quantity, setQuantity] = useState(1);
     const { addToCart, cartItems, updateCartItem } = useCart();
 
-
-
     const existingItem = cartItems.find(item => item.id === product?.id);
     const cartQty = existingItem ? existingItem.quantity : 0;
 

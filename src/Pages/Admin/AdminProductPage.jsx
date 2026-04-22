@@ -31,9 +31,18 @@ function AdminProductPage() {
 
     const [formData, setFormData] = useState({
         ProductName: '', ProductCategory: '', CostPrice: 0, Price: 0,
-        ProductDetail: '', AreaType: [], PlantType: [], Pressure: 'Low',
-        Stock: 0, YoutubeURL: '-', ProductStatus: 'Active'
+        ProductDetail: '', AreaType: [], PlantType: [], Pressure: '',
+        Stock: 0, YoutubeURL: '-', ProductStatus: 'Active', MinArea: '',
+        MaxArea: '',
+        FlowRate: ''
     });
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
 
     const [imageFiles, setImageFiles] = useState([]);
     const [imagePreviews, setImagePreviews] = useState([]);
@@ -114,6 +123,7 @@ function AdminProductPage() {
     const categories = ['All', ...new Set(products.map(p => p.ProductCategory).filter(Boolean))];
 
     // ฟังก์ชันสำหรับจัดการตะกร้าสินค้า (ใช้ในส่วนของ Modal ดูรายละเอียดคำขอเพิ่มสินค้า)
+    // ฟังก์ชันสำหรับจัดการเปิด Modal (และดึงข้อมูลเดิมมาแสดง)
     const openModal = (type, product = null, request = null) => {
         setOpenDropdownId(null);
         if (product) {
@@ -123,15 +133,22 @@ function AdminProductPage() {
                 CostPrice: product.CostPrice || 0,
                 Price: product.Price || 0,
                 ProductDetail: product.ProductDetail || '',
-                Pressure: product.Pressure || 'Low',
                 Stock: product.Stock || 0,
                 ReasonSelect: '',
                 ReasonDetail: '',
                 YoutubeURL: product.YoutubeURL || '',
                 ProductStatus: product.ProductStatus || 'Active',
                 AreaType: Array.isArray(product.AreaType) ? product.AreaType : [],
-                PlantType: Array.isArray(product.PlantType) ? product.PlantType : []
+                PlantType: Array.isArray(product.PlantType) ? product.PlantType : [],
+
+                // 🌟 เพิ่ม 4 บรรทัดนี้ เพื่อดึงข้อมูลวิศวกรรมจาก Firebase มาแสดงลงในช่อง
+                // ใช้ ?? (Nullish) เพื่อให้กรณีที่ค่าเป็น 0 เลข 0 จะได้ไม่หายไปครับ
+                MinArea: product.MinArea ?? '',
+                MaxArea: product.MaxArea ?? '',
+                FlowRate: product.FlowRate ?? '',
+                Pressure: product.Pressure ?? ''
             });
+
             if (product.ProductPic) {
                 setExistingImages(Array.isArray(product.ProductPic) ? product.ProductPic : [product.ProductPic]);
             } else {
@@ -140,8 +157,11 @@ function AdminProductPage() {
         } else {
             setFormData({
                 ProductName: '', ProductCategory: '', CostPrice: 0, Price: 0,
-                ProductDetail: '', AreaType: [], PlantType: [], Pressure: 'Low',
-                Stock: 0, ReasonSelect: '', ReasonDetail: '', YoutubeURL: '-', ProductStatus: 'Active'
+                ProductDetail: '', AreaType: [], PlantType: [],
+                Stock: 0, ReasonSelect: '', ReasonDetail: '', YoutubeURL: '-', ProductStatus: 'Active',
+
+                // 🌟 เซ็ตค่าเริ่มต้นให้เป็นค่าว่าง เวลาเปิดฟอร์มเพื่อ "เพิ่มสินค้าใหม่"
+                MinArea: '', MaxArea: '', FlowRate: '', Pressure: ''
             });
             setImageFiles([]);
             setImagePreviews([]);
@@ -177,21 +197,37 @@ function AdminProductPage() {
     }
 
     // ฟังก์ชันสำหรับส่งคำขอแก้ไขข้อมูลสินค้า (หรือเพิ่มสินค้าใหม่) โดยจะตรวจสอบประเภทของคำขอและส่งข้อมูลที่จำเป็นไปยัง Firebase เพื่อรอการอนุมัติจากผู้จัดการ
+    // ฟังก์ชันสำหรับส่งคำขอแก้ไขข้อมูลสินค้า (หรือเพิ่มสินค้าใหม่)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         const { type, selectedProduct } = modalState;
 
+        // 🌟 1. ตรวจสอบหมวดหมู่สินค้า
+        const isAccessory = formData.ProductCategory === 'Controller&Timer' || formData.ProductCategory === 'Fitting&Pipe';
+        const isPump = formData.ProductCategory === 'Pump';
+
+        // 🌟 2. แปลงข้อมูลวิศวกรรมให้พร้อมบันทึก
+        const parsedMinArea = isAccessory ? 0 : Number(formData.MinArea || 0);
+        const parsedMaxArea = isAccessory ? 99999 : Number(formData.MaxArea || 99999);
+        const parsedFlowRate = isAccessory ? null : (formData.FlowRate ? Number(formData.FlowRate) : null);
+        const parsedPressure = isPump ? Number(formData.Pressure || 0) : null;
+
         try {
+            // --- กรณีแก้ไขข้อมูลทั่วไป ---
             if (type === 'INFO') {
                 const updateData = {
                     ProductName: formData.ProductName,
                     ProductDetail: formData.ProductDetail,
                     ProductCategory: formData.ProductCategory,
                     YoutubeURL: formData.YoutubeURL,
-                    Pressure: formData.Pressure,
                     AreaType: formData.AreaType,
                     PlantType: formData.PlantType,
+                    // นำข้อมูลที่กรองแล้วมาใช้งาน
+                    MinArea: parsedMinArea,
+                    MaxArea: parsedMaxArea,
+                    FlowRate: parsedFlowRate,
+                    Pressure: parsedPressure,
                 }
                 await updateDoc(doc(db, 'products', selectedProduct.id), updateData);
                 toast.success('แก้ไขข้อมูลสินค้าสำเร็จ');
@@ -199,6 +235,8 @@ function AdminProductPage() {
                 setIsSubmitting(false);
                 return;
             }
+
+            // --- กรณีอัปเดตรูปภาพ ---
             if (type === 'IMAGE') {
                 let newUploadedUrls = [];
                 if (imageFiles.length > 0) {
@@ -218,6 +256,7 @@ function AdminProductPage() {
             const newProductRef = doc(collection(db, "products"));
             const targetProductId = selectedProduct ? selectedProduct.id : newProductRef.id;
 
+            // --- กรณีเพิ่มสินค้าใหม่ ---
             if (type === 'ADD') {
                 actionText = 'เพิ่มสินค้าใหม่';
                 const uploadedPicUrls = await handleUploadImages(targetProductId);
@@ -228,7 +267,12 @@ function AdminProductPage() {
                     Stock: Number(formData.Stock),
                     AreaType: formData.AreaType,
                     PlantType: formData.PlantType,
-                    ProductPic: uploadedPicUrls
+                    ProductPic: uploadedPicUrls,
+                    // นำข้อมูลที่กรองแล้วมาใช้งานทับของเดิม
+                    MinArea: parsedMinArea,
+                    MaxArea: parsedMaxArea,
+                    FlowRate: parsedFlowRate,
+                    Pressure: parsedPressure,
                 };
             }
             else if (type === 'PRICE') {
@@ -251,6 +295,7 @@ function AdminProductPage() {
                 requestData = { ProductStatus: formData.ProductStatus };
             }
 
+            // --- ส่วนตรวจสอบสิทธิ์ Manager / Employee (ใช้โค้ดเดิมของคุณ) ---
             if (isManager) {
                 if (type === 'ADD') {
                     await setDoc(newProductRef, requestData);
@@ -1026,7 +1071,7 @@ function AdminProductPage() {
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
+                                        {/* <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">แรงดันน้ำ</label>
                                             <select value={formData.Pressure || 'Low'} onChange={e => setFormData({ ...formData, Pressure: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm cursor-pointer">
                                                 <option value="Low">Low</option>
@@ -1037,7 +1082,7 @@ function AdminProductPage() {
                                                 <option value="Very High">Very High</option>
 
                                             </select>
-                                        </div>
+                                        </div> */}
                                         <div className={modalState.type === 'ADD' ? "md:col-span-1" : "md:col-span-2"}>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Youtube URL</label>
                                             <input type="text" value={formData.YoutubeURL} onChange={e => setFormData({ ...formData, YoutubeURL: e.target.value })} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
@@ -1067,6 +1112,52 @@ function AdminProductPage() {
 
 
                                     </div>
+
+                                    {/* --- ส่วนข้อมูลทางวิศวกรรม (แสดงตามเงื่อนไขหมวดหมู่) --- */}
+
+                                    {/* 1. ส่วนของพื้นที่ (Min/Max Area): ซ่อนถ้าเป็นท่อหรือตัวควบคุม */}
+                                    {formData.ProductCategory !== 'Controller&Timer' && formData.ProductCategory !== 'Fitting&Pipe' && (
+                                        <div className="grid grid-cols-2 gap-4 mt-4">
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-sm font-bold text-gray-700">Min Area (ตร.ม.)</label>
+                                                <input
+                                                    type="number" name="MinArea" value={formData.MinArea} onChange={handleChange}
+                                                    placeholder="0"
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <label className="text-sm font-bold text-gray-700">Max Area (ตร.ม.)</label>
+                                                <input
+                                                    type="number" name="MaxArea" value={formData.MaxArea} onChange={handleChange}
+                                                    placeholder="99999"
+                                                    className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. ส่วนของ Flow Rate: ซ่อนถ้าเป็นท่อหรือตัวควบคุม */}
+                                    {formData.ProductCategory !== 'Controller&Timer' && formData.ProductCategory !== 'Fitting&Pipe' && (
+                                        <div className="flex flex-col gap-1 mt-4">
+                                            <label className="text-sm font-bold text-gray-700">Flow Rate (m³/h)</label>
+                                            <input
+                                                type="number" name="FlowRate" value={formData.FlowRate} onChange={handleChange}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* 3. ส่วนของ Pressure: แสดงเฉพาะ Pump เท่านั้น */}
+                                    {formData.ProductCategory === 'Pump' && (
+                                        <div className="flex flex-col gap-1 mt-4">
+                                            <label className="text-sm font-bold text-gray-700">Pressure (Bar)</label>
+                                            <input
+                                                type="number" name="Pressure" value={formData.Pressure} onChange={handleChange}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                            />
+                                        </div>
+                                    )}
                                 </>
                             )}
 
@@ -1079,7 +1170,17 @@ function AdminProductPage() {
                                         <div><span className="font-bold text-gray-700">ราคาต้นทุน:</span> ฿{formatPriceDisplay(modalState.selectedRequest.data.CostPrice)}</div>
                                         <div><span className="font-bold text-gray-700">ราคาขาย:</span> ฿{formatPriceDisplay(modalState.selectedRequest.data.Price)}</div>
                                         <div><span className="font-bold text-gray-700">สต็อกเริ่มต้น:</span> {modalState.selectedRequest.data.Stock} ชิ้น</div>
-                                        <div><span className="font-bold text-gray-700">แรงดันน้ำ:</span> {modalState.selectedRequest.data.Pressure}</div>
+
+                                        {/* --- ข้อมูลทางวิศวกรรม (แสดงผลตามเงื่อนไขหมวดหมู่) --- */}
+                                        {modalState.selectedRequest.data.ProductCategory !== 'Controller&Timer' && modalState.selectedRequest.data.ProductCategory !== 'Fitting&Pipe' && (
+                                            <>
+                                                <div><span className="font-bold text-gray-700">พื้นที่ (Min-Max):</span> {modalState.selectedRequest.data.MinArea ?? 0} - {modalState.selectedRequest.data.MaxArea ?? 99999} ตร.ม.</div>
+                                                <div><span className="font-bold text-gray-700">ปริมาณน้ำ (Flow):</span> {modalState.selectedRequest.data.FlowRate ? `${modalState.selectedRequest.data.FlowRate} m³/h` : '-'}</div>
+                                            </>
+                                        )}
+                                        {modalState.selectedRequest.data.ProductCategory === 'Pump' && (
+                                            <div><span className="font-bold text-gray-700">แรงดันน้ำ (Pressure):</span> {modalState.selectedRequest.data.Pressure ? `${modalState.selectedRequest.data.Pressure} Bar` : '-'}</div>
+                                        )}
                                     </div>
 
                                     <div>

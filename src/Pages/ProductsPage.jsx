@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../FirebaseConfig'; // ปรับ path ตามจริง
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { Search, Map, Leaf, ChevronDown, PackageX, ChevronRight, RotateCcw } from 'lucide-react';
+import { Search, Map, Leaf, ChevronDown, PackageX, ChevronRight, RotateCcw, SlidersHorizontal, Info } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import SearchImg from '../assets/Product/Search_Backgroud.jpg';
 import { useNavigate } from 'react-router-dom';
@@ -23,8 +23,29 @@ function ProductsPage() {
   const [criteria, setCriteria] = useState({
     keyword: '',
     areaType: '',
-    plantType: ''
+    plantType: '',
+    minPrice: '',
+    maxPrice: '',
+    targetArea: '',     // ขนาดพื้นที่ (ตร.ม.)
+    targetFlow: '',     // ปริมาณน้ำ (m³/h)
+    targetPressure: ''  // แรงดันน้ำ (Bar)
   });
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // const handleChange = (e) => {
+  //   setCriteria({ ...criteria, [e.target.name]: e.target.value });
+  // };
+
+  // const handleReset = () => {
+  //   setCriteria({
+  //     keyword: '', areaType: '', plantType: '',
+  //     minPrice: '', maxPrice: '', targetArea: '', targetFlow: '', targetPressure: ''
+  //   });
+  //   setHasSearched(false);
+  //   setSelectedCategory("All");
+  //   fetchProducts();
+  // };
 
   const categoryMenu = [
     { id: "All", label: "All Products" },
@@ -65,7 +86,10 @@ function ProductsPage() {
   // ฟังก์ชันสำหรับปุ่ม Reset
   const handleReset = () => {
     // 1. เคลียร์ค่าการค้นหา
-    setCriteria({ keyword: '', areaType: '', plantType: '' });
+    setCriteria({
+      keyword: '', areaType: '', plantType: '',
+      minPrice: '', maxPrice: '', targetArea: '', targetFlow: '', targetPressure: ''
+    });
 
     // 2. รีเซ็ตสถานะอื่นๆ
     setSelectedCategory("All");
@@ -82,8 +106,10 @@ function ProductsPage() {
   }
 
   const handleSearch = async (e) => {
-    if (!criteria.areaType && !criteria.plantType && !criteria.keyword) {
-      alert("Please enter at least one search criteria.");
+    const hasAnyCriteria = Object.values(criteria).some(val => val !== '');
+
+    if (!hasAnyCriteria) {
+      toast.warning("กรุณากรอกข้อมูลที่ต้องการค้นหาอย่างน้อย 1 อย่าง");
       return;
     }
 
@@ -126,33 +152,76 @@ function ProductsPage() {
 
       // --- Client-side Filtering (กรองละเอียดอีกรอบ) ---
 
-      // 1. กรอง PlantType (ถ้ามีการเลือก และยังไม่ได้ Query)
-      if (criteria.plantType && criteria.areaType) {
-        // เช็คว่าใน Array PlantType ของสินค้า มีค่าที่เลือกหรือไม่
-        results = results.filter(p => p.PlantType && p.PlantType.includes(criteria.plantType));
+      if (criteria.plantType) {
+        results = results.filter(p => {
+          if (Array.isArray(p.PlantType)) return p.PlantType.includes(criteria.plantType);
+          return p.PlantType === criteria.plantType;
+        });
       }
 
-      // 2. กรอง Keyword (ค้นหาบางส่วนของคำ)
       if (criteria.keyword) {
-        const lowerKeyword = criteria.keyword.toLowerCase();
-        results = results.filter(p =>
-          (p.ProductName && p.ProductName.toLowerCase().includes(lowerKeyword)) ||
-          (p.ProductDetail && p.ProductDetail.toLowerCase().includes(lowerKeyword)) ||
-          (p.ProductCategory && p.ProductCategory.toLowerCase().includes(lowerKeyword))
-        );
+        const lowerKw = criteria.keyword.toLowerCase();
+        results = results.filter(p => p.ProductName?.toLowerCase().includes(lowerKw));
       }
 
-      // 3. กรอง AreaType (เฉพาะกรณีที่ Query ด้วย PlantType มาก่อน)
-      if (criteria.areaType && !criteria.areaTypeQueryUsed) { // Logic เพิ่มเติมถ้าจำเป็น
-        // ปกติ step แรก query ไปแล้ว แต่เขียนกันเหนียวไว้
-        results = results.filter(p => p.AreaType && p.AreaType.includes(criteria.areaType));
+      // 1. กรองช่วงราคา
+      if (criteria.minPrice) {
+        results = results.filter(p => Number(p.Price) >= Number(criteria.minPrice));
+      }
+      if (criteria.maxPrice) {
+        results = results.filter(p => Number(p.Price) <= Number(criteria.maxPrice));
+      }
+
+      //  2. กรองขนาดพื้นที่ (ตารางเมตร)
+      if (criteria.targetArea) {
+        const tArea = Number(criteria.targetArea);
+        results = results.filter(p => {
+          // ข้ามหมวด Fitting และ Controller ให้แสดงเสมอ
+          if (p.ProductCategory === 'Fitting&Pipe' || p.ProductCategory === 'Controller&Timer') return true;
+
+          const minA = Number(p.MinArea || 0);
+          const maxA = Number(p.MaxArea || 999999);
+          return tArea >= minA && tArea <= maxA;
+        });
+      }
+
+      //  3. กรองปริมาณน้ำ Flow Rate (m³/h)
+      if (criteria.targetFlow) {
+        const tFlow = Number(criteria.targetFlow);
+        results = results.filter(p => {
+          if (p.ProductCategory === 'Fitting&Pipe' || p.ProductCategory === 'Controller&Timer') return true;
+
+          if (!p.FlowRate) return true;
+
+          const pFlow = Number(p.FlowRate);
+          //  เพิ่มเงื่อนไข: ถ้าแปลงเป็นตัวเลขไม่ได้ (เช่นเป็นอักษร) ให้แสดงขึ้นมาเลย
+          if (isNaN(pFlow)) return true;
+
+          return pFlow <= tFlow;
+        });
+      }
+
+      //  4. กรองแรงดันน้ำ Pressure (Bar)
+      if (criteria.targetPressure) {
+        const tPress = Number(criteria.targetPressure);
+        results = results.filter(p => {
+          if (p.ProductCategory === 'Fitting&Pipe' || p.ProductCategory === 'Controller&Timer') return true;
+
+          if (!p.Pressure) return true;
+
+          const pPress = Number(p.Pressure);
+          //  เพิ่มเงื่อนไข: ถ้าแปลงเป็นตัวเลขไม่ได้ (เช่นเป็นคำว่า Low, High) ให้แสดงขึ้นมาเลย
+          if (isNaN(pPress)) return true;
+
+          return pPress <= tPress;
+        });
       }
 
       setProducts(results);
-
+      setLoading(false);
     } catch (error) {
-      console.error("Error searching:", error);
-      alert("เกิดข้อผิดพลาดในการค้นหา: " + error.message);
+      console.error("Error searching products: ", error);
+      setLoading(false);
 
     }
     finally {
@@ -204,77 +273,174 @@ function ProductsPage() {
             ระบุรูปแบบพื้นที่และชนิดพืช เพื่อให้เราแนะนำอุปกรณ์ที่เหมาะสมที่สุด
           </p>
 
-          {/* --- Search Box (The Agoda Style) --- */}
-          <div className="bg-white p-4 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col md:flex-row gap-4 items-center animate-fadeInUp">
+          {/* --- Search Box (Smart Filter - Dropdown & Sliders) --- */}
+          <div className="bg-white p-5 rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col gap-4 animate-fadeInUp border border-gray-100">
 
-            {/* Input 1: Keyword */}
-            <div className="flex-1 w-full relative group">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <Search size={20} />
+            {/* แถวที่ 1: ค้นหาพื้นฐาน (Main Search) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <input
+                  type="text" name="keyword" placeholder="ค้นหาสินค้า..."
+                  value={criteria.keyword} onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                />
+                <Search size={20} className="absolute left-3 top-3.5 text-gray-400" />
               </div>
-              <input
-                type="text"
-                name="keyword"
-                placeholder="ค้นหาชื่อสินค้า..."
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                value={criteria.keyword}
-                onChange={handleChange}
-              />
+
+              <div className="relative">
+                <select
+                  name="areaType" value={criteria.areaType} onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition cursor-pointer"
+                >
+                  <option value="">ทุกพื้นที่จัดสวน (Area Type)</option>
+                  <option value="สวนหน้าบ้าน/จัดสวน">สวนหน้าบ้าน / จัดสวน</option>
+                  <option value="สวนเกษตรขนาดใหญ่">สวนเกษตรขนาดใหญ่</option>
+                  <option value="ไร่พืช/สวนผลไม้">ไร่พืช / สวนผลไม้</option>
+                  <option value="โรงเรือนเพาะชำ">โรงเรือนเพาะชำ</option>
+                  <option value="สนามหญ้า/สนามฟุตบอล">สนามหญ้า / สนามฟุตบอล</option>
+                </select>
+                <Map size={20} className="absolute left-3 top-3.5 text-gray-400" />
+                <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none" />
+              </div>
+
+              <div className="relative">
+                <select
+                  name="plantType" value={criteria.plantType} onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition cursor-pointer"
+                >
+                  <option value="">ทุกชนิดพืช (Plant Type)</option>
+                  <option value="ไม้ดอก/ไม้ประดับ">ไม้ดอก / ไม้ประดับ</option>
+                  <option value="ผักสวนครัว">ผักสวนครัว</option>
+                  <option value="ไม้ผล (ทุเรียน/เงาะ)">ไม้ผล (ทุเรียน/เงาะ)</option>
+                  <option value="พืชไร่ (ข้าวโพด/อ้อย)">พืชไร่ (ข้าวโพด/อ้อย)</option>
+                  <option value="สนามหญ้า">สนามหญ้า</option>
+                </select>
+                <Leaf size={20} className="absolute left-3 top-3.5 text-gray-400" />
+                <ChevronDown size={16} className="absolute right-4 top-4 text-gray-400 pointer-events-none" />
+              </div>
             </div>
 
-            {/* Input 2: Area Type */}
-            <div className="flex-1 w-full relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500">
-                <Map size={20} />
-              </div>
-              <select
-                name="areaType"
-                className="w-full pl-10 pr-8 py-3 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
-                value={criteria.areaType}
-                onChange={handleChange}
-              >
-                <option value="">เลือกรูปแบบพื้นที่</option>
-                {areaOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
-            </div>
+            {/* แถบเครื่องมือกลาง: ปุ่มเปิดปิด Advanced Search และปุ่มค้นหา */}
+            <div className="flex flex-col sm:flex-row justify-between items-center border-t border-gray-100 pt-3 mt-1">
 
-            {/* Input 3: Plant Type */}
-            <div className="flex-1 w-full relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">
-                <Leaf size={20} />
-              </div>
-              <select
-                name="plantType"
-                className="w-full pl-10 pr-8 py-3 bg-gray-50 border border-gray-200 rounded-xl appearance-none focus:ring-2 focus:ring-green-500 outline-none cursor-pointer"
-                value={criteria.plantType}
-                onChange={handleChange}
-              >
-                <option value="">เลือกชนิดพืช</option>
-                {plantOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
-            </div>
-
-            {(hasSearched || criteria.keyword || criteria.areaType || criteria.plantType) && (
+              {/* ปุ่ม Toggle ค้นหาขั้นสูง */}
               <button
-                onClick={handleReset}
-                className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl transition flex items-center justify-center"
-                title="ล้างเงื่อนไขการค้นหา"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors py-2"
               >
-                <RotateCcw size={20} />
+                {/* ถ้ายังไม่ได้ import SlidersHorizontal ใช้ icon อื่นแทนได้ครับ */}
+                <SlidersHorizontal size={16} />
+                {showAdvanced ? 'ซ่อนการค้นหาด้วยข้อมูลสินค้า' : 'ค้นหาด้วยข้อมูลเกี่ยวกับสินค้า (Advanced Filters)'}
+                <ChevronDown size={16} className={`transform transition-transform duration-300 ${showAdvanced ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* ปุ่ม Action (ค้นหา/ล้างค่า) */}
+              <div className="flex gap-3 w-full sm:w-auto mt-3 sm:mt-0">
+                {(hasSearched || Object.values(criteria).some(val => val !== '')) && (
+                  <button onClick={handleReset} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-xl transition flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <RotateCcw size={18} /> ล้างค่า
+                  </button>
+                )}
+                <button onClick={handleSearch} className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 w-full sm:w-auto">
+                  <Search size={18} /> ค้นหาสินค้า
+                </button>
+              </div>
+            </div>
+
+            {/* 🌟 แถวที่ 2: เมนูค้นหาขั้นสูง (ซ่อน/แสดง ตาม State) */}
+            {showAdvanced && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4 border-t border-gray-100 bg-gray-50/50 p-4 rounded-xl mt-2 animate-fadeIn">
+
+                {/* 1. ราคาสูงสุด (Max Price) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 flex justify-between">
+                    <span>ราคาสินค้า</span>
+                    <span className="text-blue-600 font-bold">{criteria.maxPrice ? `฿${Number(criteria.maxPrice).toLocaleString()}` : 'ไม่จำกัด'}</span>
+                  </label>
+                  <input
+                    type="range" name="maxPrice" min="0" max="20000" step="500"
+                    value={criteria.maxPrice || 0} onChange={handleChange}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>0</span>
+                    <span>20,000+</span>
+                  </div>
+                </div>
+
+                {/* 2. ขนาดพื้นที่ (Target Area) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 flex justify-between">
+                    <span>ขนาดพื้นที่จัดสวน</span>
+                    <span className="text-green-600 font-bold">{criteria.targetArea ? `${criteria.targetArea} ตร.ม.` : 'ไม่ระบุ'}</span>
+                  </label>
+                  <input
+                    type="range" name="targetArea" min="0" max="5000" step="50"
+                    value={criteria.targetArea || 0} onChange={handleChange}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>0 ตร.ม.</span>
+                    <span>5,000 ตร.ม.</span>
+                  </div>
+                </div>
+
+                {/* 3. ปริมาณน้ำ (Flow Rate) พร้อม Tooltip */}
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm font-medium text-gray-700 flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 relative group cursor-help">
+                      ปริมาณน้ำปั๊ม (Flow)
+                      <Info size={14} className="text-blue-500" />
+
+                      {/* --- กล่องข้อความ Tooltip (ซ่อนอยู่ จะโผล่ตอนชี้) --- */}
+                      <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-60 p-2.5 bg-gray-800 text-white text-xs leading-relaxed rounded-lg shadow-xl z-20 font-normal">
+                        ปริมาณน้ำ (ลูกบาศก์เมตร/ชั่วโมง) คืออัตราการจ่ายน้ำของปั๊ม <b>ยิ่งค่ามาก ยิ่งจ่ายน้ำได้เยอะ</b> เหมาะกับสวนที่มีหัวสปริงเกลอร์หลายจุด
+                        {/* สามเหลี่ยมชี้ลง */}
+                        <div className="absolute top-full left-6 -mt-1 border-4 border-transparent border-t-gray-800"></div>
+                      </div>
+                    </span>
+                    <span className="text-cyan-600 font-bold">{criteria.targetFlow ? `${criteria.targetFlow} m³/h` : 'ไม่ระบุ'}</span>
+                  </div>
+                  <input
+                    type="range" name="targetFlow" min="0" max="50" step="0.5"
+                    value={criteria.targetFlow || 0} onChange={handleChange}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>0</span>
+                    <span>50 m³/h</span>
+                  </div>
+                </div>
+
+                {/* 4. แรงดันน้ำ (Pressure) พร้อม Tooltip */}
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm font-medium text-gray-700 flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 relative group cursor-help">
+                      แรงดันน้ำ (Pressure)
+                      <Info size={14} className="text-blue-500" />
+
+                      {/* --- กล่องข้อความ Tooltip (ซ่อนอยู่ จะโผล่ตอนชี้) --- */}
+                      <div className="absolute right-0 md:left-0 bottom-full mb-2 hidden group-hover:block w-64 p-2.5 bg-gray-800 text-white text-xs leading-relaxed rounded-lg shadow-xl z-20 font-normal">
+                        แรงดันน้ำ (บาร์) คือแรงส่งน้ำให้พุ่งไกล <b>อุปกรณ์เช่นหัวป๊อปอัพฝังดิน หรือ Big Gun ต้องการแรงดันสูง</b> เพื่อให้ดันตัวขึ้นและกระจายน้ำได้เต็มรัศมี
+                        {/* สามเหลี่ยมชี้ลง */}
+                        <div className="absolute top-full right-10 md:left-6 md:right-auto -mt-1 border-4 border-transparent border-t-gray-800"></div>
+                      </div>
+                    </span>
+                    <span className="text-purple-600 font-bold">{criteria.targetPressure ? `${criteria.targetPressure} Bar` : 'ไม่ระบุ'}</span>
+                  </div>
+                  <input
+                    type="range" name="targetPressure" min="0" max="5" step="0.1"
+                    value={criteria.targetPressure || 0} onChange={handleChange}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>0</span>
+                    <span>5.0 Bar</span>
+                  </div>
+                </div>
+
+              </div>
             )}
-
-            {/* Search Button */}
-            <button
-              onClick={handleSearch}
-              className="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
-            >
-              <Search size={20} />
-              ค้นหา
-            </button>
-
           </div>
         </div>
       </div>
