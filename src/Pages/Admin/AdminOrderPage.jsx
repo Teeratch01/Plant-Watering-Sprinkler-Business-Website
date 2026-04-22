@@ -36,12 +36,14 @@ function AdminOrderPage() {
     const [endDate, setEndDate] = useState('');
 
     const navigate = useNavigate();
-    const [cancelModal, setCancelModal] = useState({ isOpen: false, orderId: null, reason: '', customReason: '' });
+    const [cancelModal, setCancelModal] = useState({ isOpen: false, order: null, reason: '', customReason: '' });
     const [viewModal, setViewModal] = useState({ isOpen: false, order: null });
 
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [isPaymentLoading, setIsPaymentLoading] = useState(false);
     const [isRejecting, setIsRejecting] = useState(false)
+
+    const [contactForm, setContactForm] = useState({ isOpen: false, message: '', isSending: false });
 
     useEffect(() => {
         const q = query(collection(db, "orders"), orderBy("OrderDate", "desc"));
@@ -112,33 +114,54 @@ function AdminOrderPage() {
         }
     };
 
+    // 🌟 ฟังก์ชันส่งอีเมลติดต่อลูกค้าโดยตรง (เช่น แจ้งโอนเงินเกิน)
+    const handleSendContactEmail = async (order) => {
+        if (!contactForm.message.trim()) return;
 
-    // ฟังก์ชันสำหรับเปลี่ยนสถานะคำสั่งซื้อ โดยถ้าสถานะใหม่เป็น Cancelled จะเปิด Modal ให้กรอกเหตุผลการยกเลิกก่อนที่จะอัปเดตสถานะจริง
-    const handleStatusChange = async (orderId, newStatus) => {
+        setContactForm({ ...contactForm, isSending: true });
+        try {
+            const templateParams = {
+                email: order.CustomerEmail,
+                name: order.CustomerName || 'ลูกค้า',
+                title: `ติดต่อจากร้านค้า - คำสั่งซื้อ #${order.OrderNumber}`,
+                message: contactForm.message
+            };
+
+            await emailjs.send('service_ggjvrgp', 'template_6slcuhp', templateParams, 'l0FcJmRFJUKMjF1sG');
+
+            toast.success('ส่งอีเมลแจ้งลูกค้าเรียบร้อยแล้ว');
+            setContactForm({ isOpen: false, message: '', isSending: false });
+        } catch (error) {
+            console.error("Error sending contact email:", error);
+            toast.error('เกิดข้อผิดพลาดในการส่งอีเมล');
+            setContactForm({ ...contactForm, isSending: false });
+        }
+    };
+
+    // อัปเดต: เปลี่ยนรับพารามิเตอร์จาก orderId เป็น order ทั้งก้อน
+    const handleStatusChange = async (order, newStatus) => {
         if (newStatus === 'Cancelled') {
-            setCancelModal({ isOpen: true, orderId: orderId, reason: '', customReason: '' });
+            setCancelModal({ isOpen: true, order: order, reason: '', customReason: '' });
             return;
         }
 
         try {
-            await updateDoc(doc(db, "orders", orderId), {
+            await updateDoc(doc(db, "orders", order.id), {
                 OrderStatus: newStatus,
                 CancelReason: null
             });
             toast.success('อัปเดตสถานะคำสั่งซื้อเรียบร้อยแล้ว!');
 
-            if (viewModal.isOpen && viewModal.order.id === orderId) {
+            if (viewModal.isOpen && viewModal.order.id === order.id) {
                 setViewModal({ isOpen: false, order: null });
             }
-
-
         } catch (error) {
             console.error('Error updating order status:', error);
             toast.error('เกิดข้อผิดพลาดในการอัปเดตสถานะคำสั่งซื้อ');
         }
     };
 
-    // ฟังก์ชันสำหรับยืนยันการยกเลิกคำสั่งซื้อ โดยจะอัปเดตสถานะเป็น Cancelled และบันทึกเหตุผลการยกเลิกลงใน Firebase
+    // อัปเดต: เพิ่มการส่งอีเมลเมื่อกดยืนยันยกเลิก
     const confirmCancellation = async () => {
         if (!cancelModal.reason.trim()) {
             toast.error('กรุณาระบุเหตุผลการยกเลิก');
@@ -154,13 +177,29 @@ function AdminOrderPage() {
             finalReason = `อื่นๆ: ${cancelModal.customReason.trim()}`;
         }
 
+        const order = cancelModal.order;
+
         try {
-            await updateDoc(doc(db, "orders", cancelModal.orderId), {
+            await updateDoc(doc(db, "orders", order.id), {
                 OrderStatus: 'Cancelled',
                 CancelReason: finalReason
             });
-            toast.success('ยกเลิกคำสั่งซื้อสำเร็จ!');
-            setCancelModal({ isOpen: false, orderId: null, reason: '', customReason: '' });
+
+            // --- ส่ง Email แจ้งยกเลิกคำสั่งซื้อ ---
+            if (order.CustomerEmail) {
+                const templateParams = {
+                    email: order.CustomerEmail,
+                    name: order.CustomerName || 'ลูกค้า',
+                    title: `แจ้งยกเลิกคำสั่งซื้อ #${order.OrderNumber}`,
+                    message: `ทางร้านขออภัยที่ต้องแจ้งให้ทราบว่า คำสั่งซื้อหมายเลข #${order.OrderNumber} ของคุณถูกยกเลิกแล้ว\n\nเหตุผล: ${finalReason}\n\nทางเราจะมีการคืนเงินให้กับลูกค้าใน 3-5 วันทำการหรือมีข้อสงสัยเพิ่มเติม สามารถติดต่อสอบถามทางร้านได้เลยครับ`
+                };
+                // ใช้ template เดิมแบบเงียบๆ ไม่บล็อกการทำงานหลัก
+                emailjs.send('service_ggjvrgp', 'template_6slcuhp', templateParams, 'l0FcJmRFJUKMjF1sG')
+                    .catch(err => console.error("Error sending cancel email:", err));
+            }
+
+            toast.success('ยกเลิกคำสั่งซื้อและแจ้งอีเมลสำเร็จ!');
+            setCancelModal({ isOpen: false, order: null, reason: '', customReason: '' });
         }
         catch (error) {
             console.error('Error cancelling order:', error);
@@ -421,7 +460,7 @@ function AdminOrderPage() {
 
                                                             <select
                                                                 value={order.OrderStatus || ''}
-                                                                onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                                                onChange={(e) => handleStatusChange(order, e.target.value)}
                                                                 //คลาส disabled:... เข้าไปเพื่อให้เห็นชัดเจนว่าปุ่มถูกล็อคแล้ว
                                                                 className={`w-full border rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer font-bold
         ${isNeedsApproval ? 'border-orange-400 text-orange-600 bg-orange-50 animate-pulse' : 'border-gray-200 bg-white'}
@@ -622,7 +661,7 @@ function AdminOrderPage() {
                                                                 </button>
 
                                                                 <button
-                                                                    onClick={() => handleStatusChange(viewModal.order.id, 'Payment Success')}
+                                                                    onClick={() => handleStatusChange(viewModal.order, 'Payment Success')}
                                                                     disabled={isRejecting || viewModal.order.OrderStatus !== 'Payment In Progress'}
                                                                     className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[11px] font-bold py-2.5 px-1 rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-center"
                                                                 >
@@ -649,7 +688,19 @@ function AdminOrderPage() {
                                 <div className="w-full lg:w-2/3 flex flex-col gap-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                                            <h3 className="text-sm font-bold text-blue-800 mb-3 border-b border-blue-200 pb-2">ข้อมูลผู้สั่งซื้อ</h3>
+                                            {/* 🌟 ส่วน Header ที่เพิ่มปุ่มส่งอีเมล */}
+                                            <div className="flex justify-between items-start mb-3 border-b border-blue-200 pb-2">
+                                                <h3 className="text-sm font-bold text-blue-800">ข้อมูลผู้สั่งซื้อ</h3>
+                                                {viewModal.order.CustomerEmail && (
+                                                    <button
+                                                        onClick={() => setContactForm({ ...contactForm, isOpen: !contactForm.isOpen })}
+                                                        className="text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded font-bold transition flex items-center gap-1 shadow-sm"
+                                                    >
+                                                        ✉️ ส่งอีเมลติดต่อ
+                                                    </button>
+                                                )}
+                                            </div>
+
                                             <p className="text-sm text-gray-700 mb-1">
                                                 <span className="font-semibold">ชื่อ:</span> {viewModal.order.CustomerName || '-'}
                                             </p>
@@ -660,6 +711,37 @@ function AdminOrderPage() {
                                                 <p className="text-sm text-gray-700 mb-1">
                                                     <span className="font-semibold">อีเมล:</span> {viewModal.order.CustomerEmail}
                                                 </p>
+                                            )}
+
+                                            {/* 🌟 ส่วนกล่องพิมพ์ข้อความ (จะแสดงเมื่อกดปุ่ม) */}
+                                            {contactForm.isOpen && (
+                                                <div className="mt-3 bg-white p-3 rounded-lg border border-blue-200 shadow-sm animate-fade-in-down">
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                                        ข้อความถึงลูกค้า (เช่น ยอดเงินโอนเกิน)
+                                                    </label>
+                                                    <textarea
+                                                        rows="3"
+                                                        value={contactForm.message}
+                                                        onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                                                        placeholder="พิมพ์ข้อความที่ต้องการแจ้งลูกค้าที่นี่..."
+                                                        className="w-full border border-gray-300 rounded p-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none resize-none mb-2 bg-gray-50"
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => setContactForm({ isOpen: false, message: '', isSending: false })}
+                                                            className="px-3 py-1.5 text-[10px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded transition"
+                                                        >
+                                                            ยกเลิก
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleSendContactEmail(viewModal.order)}
+                                                            disabled={contactForm.isSending || !contactForm.message.trim()}
+                                                            className="px-3 py-1.5 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded transition disabled:opacity-50 flex items-center gap-1"
+                                                        >
+                                                            {contactForm.isSending ? 'กำลังส่ง...' : 'ส่งอีเมล'}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
 
