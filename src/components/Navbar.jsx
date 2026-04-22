@@ -76,6 +76,10 @@ const Navbar = () => {
             Linkto: '/order-status'
         },
         {
+            key: 'ความรู้เบื้องต้น', 
+            Linkto: '/knowledge'
+        },
+        {
             key: 'ติดต่อเรา',
             Linkto: '/contact'
         },

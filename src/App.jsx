@@ -30,7 +30,7 @@ import AdminOrdersPage from './Pages/Admin/AdminOrderPage';
 import AdminManagementPage from './Pages/Admin/AdminManagementPage';
 import AdminProductPage from './Pages/Admin/AdminProductPage';
 import AdminCustomerPage from './Pages/Admin/AdminCustomerPage';
-
+import KnowledgePage from './Pages/KnowledgePage';
 
 import { auth, db } from './FirebaseConfig'; // เช็ค Path ให้ตรงกับโปรเจกต์คุณ
 import { doc, getDoc } from 'firebase/firestore';
@@ -198,6 +198,7 @@ function App() {
         <Route path="/order-history" element={<OrderHistoryPage />} />
         <Route path="/contact" element={<ContactUsPage />} />
         <Route path="/chat" element={<ClientChatPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
 
         <Route path="/admin/dashboard" element={
           <AdminRoute>
