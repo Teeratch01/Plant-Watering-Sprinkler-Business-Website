@@ -389,12 +389,12 @@ function ProductsPage() {
                 <div className="flex flex-col gap-2">
                   <div className="text-sm font-medium text-gray-700 flex justify-between items-center">
                     <span className="flex items-center gap-1.5 relative group cursor-help">
-                      ปริมาณน้ำปั๊ม (Flow)
+                      อัตราการกระจายน้ำ (Flow)
                       <Info size={14} className="text-blue-500" />
 
                       {/* --- กล่องข้อความ Tooltip (ซ่อนอยู่ จะโผล่ตอนชี้) --- */}
                       <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-60 p-2.5 bg-gray-800 text-white text-xs leading-relaxed rounded-lg shadow-xl z-20 font-normal">
-                        ปริมาณน้ำ (ลูกบาศก์เมตร/ชั่วโมง) คืออัตราการจ่ายน้ำของปั๊ม <b>ยิ่งค่ามาก ยิ่งจ่ายน้ำได้เยอะ</b> เหมาะกับสวนที่มีหัวสปริงเกลอร์หลายจุด
+                        อัตราการกระจายน้ำ (ลูกบาศก์เมตร/ชั่วโมง) คืออัตราการจ่ายน้ำของปั๊ม <b>ยิ่งค่ามาก ยิ่งจ่ายน้ำได้เยอะ</b> เหมาะกับสวนที่มีหัวสปริงเกลอร์หลายจุด
                         {/* สามเหลี่ยมชี้ลง */}
                         <div className="absolute top-full left-6 -mt-1 border-4 border-transparent border-t-gray-800"></div>
                       </div>
